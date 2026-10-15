@@ -1,0 +1,18 @@
+{
+  "name": "arcane-compositry-companion",
+  "version": "0.1.0",
+  "description": "Companion site for the Dungeons & Dragons: Arcane Compositry expansion - rules codex, spellcrafting calculators, spell indexes and character sheets.",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "make-dm": "node scripts/make-dm.js",
+    "check-data": "node scripts/check-spells.js",
+    "check-spells": "node scripts/check-spells.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

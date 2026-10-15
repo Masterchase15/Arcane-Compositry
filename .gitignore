@@ -1,0 +1,4 @@
+# The database holds player accounts and characters - never commit it.
+storage/
+node_modules/
+.env
