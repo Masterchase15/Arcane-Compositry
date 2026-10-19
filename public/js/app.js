@@ -4,35 +4,46 @@
  * The site is a "single page app": the address after the # decides which page
  * module is shown, e.g.  /#/spells/codified  ->  pages/spells.js
  *
+ * Before each page is drawn, the router decides which campaign it uses (see
+ * the CAMPAIGNS note in api.js): a campaign hub (#/campaign/<id>) uses that
+ * campaign and shows the campaign banner; every other page uses the Homebrew
+ * filter's choice, or the standard rules.
+ *
  * ─── TO ADD A PAGE ─────────────────────────────────────────────────────────
  *  1. Create public/js/pages/my-page.js exporting  `export async function render(main, ctx) {...}`
  *     (fill `main.innerHTML`; you may return a function that runs when the page is left).
  *  2. Add one line to ROUTES below.
  *  3. Optionally add it to NAV so it shows in the menu.
+ *  Add `homebrew: true` to its ROUTES line to give it the Homebrew filter bar
+ *  (for pages that show spells, items, classes or Components).
  */
-import { state, loadUser, loadClasses, loadComponents, refreshCatalog, api, isDM } from './api.js';
+import { state, loadUser, loadClasses, loadComponents, refreshCatalog, useGroup, campaignHref, api, isDM } from './api.js';
 import { esc, icon, openDialog, toast } from './ui.js';
+import { homebrewBar } from './nav.js';
 
 const ROUTES = [
   { path: /^\/$/,                               load: () => import('./pages/home.js') },
   { path: /^\/codex(?:\/([\w-]+))?$/,           load: () => import('./pages/codex.js') },
-  { path: /^\/craft$/,                          load: () => import('./pages/craft.js') },
+  { path: /^\/craft$/,                          load: () => import('./pages/craft.js'), homebrew: true },
   { path: /^\/tools$/,                          load: () => import('./pages/tools.js') },
-  { path: /^\/spells\/components$/,              load: () => import('./pages/components.js') },
-  { path: /^\/spells(?:\/(codified|compositry))?$/, load: () => import('./pages/spells.js') },
-  { path: /^\/items$/,                          load: () => import('./pages/items.js') },
-  { path: /^\/classes(?:\/([\w-]+))?$/,         load: () => import('./pages/classes.js') },
+  { path: /^\/spells\/components$/,              load: () => import('./pages/components.js'), homebrew: true },
+  { path: /^\/spells(?:\/(codified|compositry))?$/, load: () => import('./pages/spells.js'), homebrew: true },
+  { path: /^\/items$/,                          load: () => import('./pages/items.js'), homebrew: true },
+  { path: /^\/classes(?:\/([\w-]+))?$/,         load: () => import('./pages/classes.js'), homebrew: true },
   { path: /^\/characters$/,                     load: () => import('./pages/characters.js') },
   { path: /^\/characters\/new$/,                load: () => import('./pages/new-character.js') },
   { path: /^\/characters\/([\w-]+)$/,           load: () => import('./pages/sheet.js') },
   { path: /^\/guide$/,                          load: () => import('./pages/guide.js') },
   { path: /^\/account$/,                        load: () => import('./pages/account.js') },
-  { path: /^\/dm$/,                             load: () => import('./pages/dm.js') },
+  { path: /^\/campaigns$/,                      load: () => import('./pages/campaigns.js') },
+  { path: /^\/campaign\/([\w-]+)$/,             load: () => import('./pages/campaign.js') },
+  // Old address of the DM page: the campaign list now leads to each campaign's DM tools.
+  { path: /^\/dm$/,                             load: () => import('./pages/campaigns.js') },
 ];
 
 /** Menu entries. `tab: true` also puts the entry in the phone bottom bar (keep that to 5). */
 const NAV = [
-  { href: '#/',           label: 'Home',       icon: 'home',       tab: true, topbar: false },
+  { href: '#/',           label: 'Home',       icon: 'home',       topbar: false },
   { href: '#/codex',      label: 'Codex',      icon: 'book',       tab: true },
   { href: '#/craft',      label: 'Spellcraft', icon: 'sparkles',   tab: true },
   { href: '#/tools',      label: 'Calculators', icon: 'calculator' },
@@ -40,6 +51,7 @@ const NAV = [
   { href: '#/items',      label: 'Items & Weapons', icon: 'sword' },
   { href: '#/classes',    label: 'Classes',    icon: 'shield' },
   { href: '#/characters', label: 'Characters', icon: 'users',      tab: true },
+  { href: '#/campaigns',  label: 'Campaigns',  icon: 'flag',       tab: true },
   { href: '#/guide',      label: 'Guide',      icon: 'compass' },
 ];
 
@@ -83,7 +95,6 @@ export function drawShell() {
     </a>
     <nav class="nav-links" aria-label="Main">
       ${NAV.filter((n) => n.topbar !== false).map(link).join('')}
-      ${isDM() ? link({ href: '#/dm', label: 'DM', icon: 'crown' }) : ''}
     </nav>
     <div class="topbar-actions">
       <button class="btn ghost icon-only" id="theme-btn" aria-label="Switch to ${isDark() ? 'light' : 'dark'} theme">${icon(isDark() ? 'sun' : 'moon')}</button>
@@ -94,17 +105,53 @@ export function drawShell() {
     </div>`;
 
   document.getElementById('tabbar').innerHTML = NAV.filter((n) => n.tab).map(link).join('');
+  drawCampaignBar(path);
   document.getElementById('theme-btn').addEventListener('click', toggleTheme);
   document.getElementById('menu-btn').addEventListener('click', () => openMenu(false));
   document.getElementById('account-btn')?.addEventListener('click', () => openMenu(true));
 }
+
+/**
+ * The campaign banner under the top bar - shown only inside a campaign hub, so
+ * it is always clear whether you are browsing the site or in a campaign.
+ */
+function drawCampaignBar(path) {
+  let bar = document.getElementById('campaign-bar');
+  const g = isCampaignPath(path) ? state.group : null;
+  if (!g) { bar?.remove(); return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'campaign-bar';
+    bar.className = 'campaign-bar';
+    document.getElementById('topbar').after(bar);
+  }
+  const others = state.groups.filter((x) => x.id !== g.id);
+  bar.innerHTML = `
+    <div class="campaign-bar-inner">
+      <span class="campaign-bar-label">${icon('flag')}<span><span class="kicker">Campaign</span><b>${esc(g.name)}</b></span>
+        <span class="badge ${g.role === 'dm' ? 'gold' : ''}">${g.role === 'dm' ? 'DM' : 'Player'}</span></span>
+      <span class="row">
+        ${others.length ? `<button class="btn sm ghost" id="switch-campaign">Switch</button>` : ''}
+        <a class="btn sm" href="#/">${icon('back')}Exit to site</a>
+      </span>
+    </div>`;
+  bar.querySelector('#switch-campaign')?.addEventListener('click', () => {
+    const dlg = openDialog({
+      title: 'Switch campaign', narrow: true,
+      body: `<div class="menu-list">${others.map((x) => `<a href="${campaignHref(x.id)}" data-close>${icon(x.role === 'dm' ? 'crown' : 'flag')}${esc(x.name)}</a>`).join('')}
+        <hr><a href="#/campaigns" data-close>${icon('plus')}All campaigns</a></div>`,
+    });
+    return dlg;
+  });
+}
+
+const isCampaignPath = (path) => /^\/campaign\//.test(path);
 
 /** The slide-up menu: everything that does not fit in the bottom bar, plus account actions. */
 function openMenu(accountOnly) {
   const user = state.user;
   const pages = accountOnly ? '' : `
     ${NAV.filter((n) => !n.tab).map((n) => `<a href="${n.href}" data-close>${icon(n.icon)}${n.label}</a>`).join('')}
-    ${isDM() ? `<a href="#/dm" data-close>${icon('crown')}DM tools</a>` : ''}
     <hr>`;
   const dlg = openDialog({
     title: user ? esc(user.displayName) : 'Menu',
@@ -112,7 +159,7 @@ function openMenu(accountOnly) {
     body: `<div class="menu-list">
       ${pages}
       ${user
-        ? `${accountOnly && isDM() ? `<a href="#/dm" data-close>${icon('crown')}DM tools</a>` : ''}
+        ? `<a href="#/campaigns" data-close>${icon('flag')}My campaigns</a>
            <a href="#/characters" data-close>${icon('users')}My characters</a>
            <a href="#/account" data-close>${icon('user')}Account settings</a>
            <hr>
@@ -123,7 +170,9 @@ function openMenu(accountOnly) {
   dlg.querySelector('#signout')?.addEventListener('click', async () => {
     await api('POST', '/auth/logout').catch(() => {});
     state.user = null;
-    await refreshCatalog();
+    state.groups = [];
+    state.homebrew = null;
+    await useGroup(null);
     dlg.close();
     toast('Signed out.');
     if (location.hash === '#/') route(); else location.hash = '#/';
@@ -142,6 +191,9 @@ async function route() {
   // Let the page being left tidy up (the sheet uses this to save pending edits).
   try { await leavePage?.(); } catch { /* never block navigation */ }
   leavePage = null;
+  // Which campaign this page uses: the hub's own, else the Homebrew filter's choice.
+  await useGroup(isCampaignPath(path) ? match?.m[1] : state.homebrew);
+  if (id !== navId) return;
   drawShell();
 
   // Start every page with a brand-new <main>, so click handlers from the
@@ -159,6 +211,7 @@ async function route() {
     if (id !== navId) return; // the person already moved on
     const cleanup = await page.render(main, { params: match.m.slice(1), query, path });
     if (id !== navId) return void cleanup?.();
+    if (match.r.homebrew) homebrewBar(main);
     leavePage = cleanup || null;
   } catch (err) {
     console.error(err);
@@ -177,7 +230,10 @@ async function route() {
 // ── Start ────────────────────────────────────────────────────────────────────
 applyTheme();
 drawShell();
-await Promise.all([loadUser(), loadClasses().catch(() => {}), loadComponents().catch(() => {})]);
+// The user (and so their campaigns) first: the class and Component lists depend on the campaign.
+await loadUser();
+await useGroup(state.homebrew);
+await Promise.all([loadClasses().catch(() => {}), loadComponents().catch(() => {})]);
 window.addEventListener('hashchange', route);
 route();
 

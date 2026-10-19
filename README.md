@@ -19,8 +19,18 @@ Then open <http://localhost:3000>. On Windows you can also double-click
 **Restart it after changing anything in the `server/` folder or `server.js`.**
 Changes under `public/` and `data/` only need a browser refresh.
 
-**The first account you create becomes the DM.** Create yours before sharing
-the address with players.
+**Site admins** can reset anyone's password (Account settings > All
+accounts). Nobody is an admin by default: create your account on the site,
+then on the server run `npm run make-admin <your username>`. Run
+`npm run make-admin` with nothing after it to list the current admins.
+
+**Campaigns.** Everything on the site works without one. To run a game, open
+**Campaigns**, start a campaign - you become its DM - and give your players its
+invite code (inside the campaign, Group tab). Several campaigns can share the
+site, each with its own party, notes and homebrew. Inside a campaign a gold
+banner shows under the top bar; the spell, item and class lists have a
+**Homebrew** filter to include a campaign's homebrew while browsing. When the site is online, set `INVITE_CODE` so only people with an
+invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 
 ## What is where
 
@@ -28,13 +38,13 @@ the address with players.
 | ------------------------------------------- | -------------------------------------------------- |
 | **Change a Mana cost, damage number or any formula** | `public/js/rules/formulas.js` - see [Tuning the numbers](#tuning-the-numbers) below |
 | **Edit, add to or re-table the Codex**      | `public/js/rules/codex-content.js` - see [Editing the Codex](#editing-the-codex) below |
-| Add or edit a spell                         | DM page, or `data/spells/` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
+| Add or edit a spell                         | Your campaign (as DM), or `data/spells/` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
 | Add or edit a Physical / Aspectual Component | DM page (Spells > Physical & Aspectual), or `data/components.js` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
 | Add a custom subclass to any class          | DM page (Classes > Subclasses), or `data/subclasses.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#subclasses) |
 | Add an NPC or enemy (DM only)               | DM page (NPCs & Enemies), or `data/npcs.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#npcs--enemies-dm-only) |
-| Run a fight (turn order, HP, Guard)         | DM page > **Initiative Tracker** - [docs/INITIATIVE_TRACKER.md](docs/INITIATIVE_TRACKER.md) |
+| Run a fight (turn order, HP, Guard)         | Your campaign (as DM) > **Initiative Tracker** - [docs/INITIATIVE_TRACKER.md](docs/INITIATIVE_TRACKER.md) |
 | Hide something from players, or publish it  | DM page: the **Hide / Publish** button on any row - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md#hidden-or-public) |
-| Add or edit an item, weapon or class        | DM page, or `data/items.js` / `data/classes.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md) |
+| Add or edit an item, weapon or class        | Your campaign (as DM), or `data/items.js` / `data/classes.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md) |
 | Add a school, Form or item category         | `public/js/rules/constants.js`                     |
 | Add a field to the character sheet          | `public/js/rules/character.js` + `public/js/pages/sheet.js` |
 | Add a calculator                            | `public/js/calculators.js`                         |
@@ -283,10 +293,10 @@ docs/                guides for you
 node server.js                  # run the site
 node --watch server.js          # run it and restart automatically when server files change
 node scripts/check-spells.js    # check everything in data/ for typos
-node scripts/make-dm.js NAME    # give the account NAME the DM role
+node scripts/make-admin.js NAME # make the account NAME a site admin (add "off" to undo; no NAME lists admins)
 ```
 
-(`npm start`, `npm run check-data` and `npm run make-dm NAME` do the same
+(`npm start`, `npm run check-data` and `npm run make-admin NAME` do the same
 things. If PowerShell refuses to run `npm` with a "running scripts is disabled"
 message, use the `node ...` forms above or type `npm.cmd` instead of `npm`.)
 

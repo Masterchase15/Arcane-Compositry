@@ -7,7 +7,7 @@
  *
  * The items themselves come from data/items.js and the DM page.
  */
-import { api, loadItems, state, isDM } from '../api.js';
+import { api, loadItems, state, isDM, campaignHref } from '../api.js';
 import { replaceQuery } from '../nav.js';
 import { esc, icon, openDialog, optionTags, toast, debounce } from '../ui.js';
 import { ITEM_CATEGORIES, ITEM_RARITIES } from '../rules/constants.js';
@@ -50,7 +50,7 @@ export async function render(main, { query }) {
       <p class="muted" id="count" role="status" aria-live="polite"></p>
       <div class="row">
         <button class="btn sm ghost" id="clear" type="button">Clear filters</button>
-        ${isDM() ? `<a class="btn sm" href="#/dm?tab=items">${icon('plus')}Add an item</a>` : ''}
+        ${isDM() ? `<a class="btn sm" href="${campaignHref()}?tab=items">${icon('plus')}Add an item</a>` : ''}
       </div>
     </div>
     <div class="spell-list" id="list"></div>`;

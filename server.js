@@ -12,6 +12,8 @@
  *   HOST=0.0.0.0       which network interface (0.0.0.0 = reachable from other devices)
  *   STORAGE_DIR=...    where the database file lives (default ./storage)
  *   COOKIE_SECURE=1    set when the site is served over https
+ *   INVITE_CODE=...    code players need to create an account (unset = anyone can sign up)
+ *   TRUST_PROXY=1      number of proxies in front of the site (set on hosting services)
  */
 import http from 'node:http';
 import fs from 'node:fs';

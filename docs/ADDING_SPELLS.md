@@ -10,7 +10,9 @@ And two ways to add to either list. Use whichever you like; they combine.
 
 ## Way 1 - the DM page (no code)
 
-1. Sign in with your DM account and open **DM** in the menu.
+1. Sign in, open **Campaigns** and enter your campaign (you must be its DM), then the **Spells** tab.
+   Everything you add or change there applies to that campaign only. (Made a spell in the
+   Spellcrafter? Its **Save to campaign homebrew** button adds it to the Compositry list.)
 2. On the **Spells** tab choose *Codified* or *Compositry*, then **New spell**.
 3. Fill in the form and tick the classes that may learn it. Save.
 
@@ -76,7 +78,7 @@ text itself contains a backtick or `${`, put a backslash in front of it.
 ## Hidden or public
 
 Every spell, Component, item and class is either **public** (players see it)
-or **hidden** (only DM accounts see it). Use it to prepare things ahead of
+or **hidden** (only the group's DMs see it). Use it to prepare things ahead of
 time - an enemy's weapon, an undiscovered Component - and reveal them when the
 players earn them.
 
@@ -86,14 +88,14 @@ players earn them.
 - The add / edit form has a **Visibility** box, so a new entry can start hidden.
 - In a data file, write `hidden: true` to make an entry start hidden. The
   button on the DM page still overrides it.
-- DM accounts see hidden entries everywhere (marked "Hidden"), so you can still
+- The group's DMs see hidden entries everywhere (marked "Hidden"), so you can still
   add a hidden item or spell to a player's sheet. The player keeps the row on
   their sheet, but cannot open its details until you publish it.
 
 ## Physical & Aspectual Components
 
 The third tab on the Spells page lists the Components that Compositions are
-built from. They are added like spells: DM page > Spells > **Physical &
+built from. They are added like spells: Your campaign (as DM) > Spells > **Physical &
 Aspectual**, or `data/components.js`.
 
 | Field          | Rule                                                        |

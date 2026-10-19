@@ -3,7 +3,7 @@
  *
  * The classes themselves come from data/classes.js and the DM page.
  */
-import { loadClasses, loadSubclasses, subclassesOf, isDM } from '../api.js';
+import { loadClasses, loadSubclasses, subclassesOf, isDM, campaignHref } from '../api.js';
 import { replaceQuery } from '../nav.js';
 import { esc, icon, paragraphs, optionTags, debounce, openDialog } from '../ui.js';
 import { subclassDetail } from '../details.js';
@@ -46,7 +46,7 @@ function renderIndex(main, classes, query) {
     <div class="row between">
       <p class="muted" id="count" role="status" aria-live="polite"></p>
       <div class="row"><button class="btn sm ghost" id="clear" type="button">Clear filters</button>
-        ${isDM() ? `<a class="btn sm" href="#/dm?tab=classes&list=classes">${icon('plus')}Add a class</a>` : ''}</div>
+        ${isDM() ? `<a class="btn sm" href="${campaignHref()}?tab=classes&list=classes">${icon('plus')}Add a class</a>` : ''}</div>
     </div>
     <div class="grid cols-auto" id="list"></div>`;
 
@@ -100,7 +100,7 @@ function renderClass(main, c, query) {
       <div class="row">
         <a class="btn primary" href="#/characters/new?class=${encodeURIComponent(c.name)}">${icon('plus')}Create a ${esc(c.name)}</a>
         <a class="btn" href="#/spells/codified?class=${encodeURIComponent(c.name)}">${icon('scroll')}${esc(c.name)} spells</a>
-        ${isDM() ? `<a class="btn" href="#/dm?tab=classes&list=classes">${icon('edit')}Edit on the DM page</a>` : ''}
+        ${isDM() ? `<a class="btn" href="${campaignHref()}?tab=classes&list=classes">${icon('edit')}Edit on the DM page</a>` : ''}
       </div>
     </div>
 
@@ -120,7 +120,7 @@ function renderClass(main, c, query) {
 
         <section id="subclasses"><h2>Subclasses</h2>
           <p class="muted">Tap a subclass to see everything it adds to the ${esc(c.name)}.
-            ${isDM() ? `<a href="#/dm?tab=classes&list=subclasses">Add a custom subclass</a>` : ''}</p>
+            ${isDM() ? `<a href="${campaignHref()}?tab=classes&list=subclasses">Add a custom subclass</a>` : ''}</p>
           ${subclasses.length ? `<div class="grid cols-2">${subclasses.map((s) => `<button type="button" class="card subclass-card" data-subclass="${esc(s.id)}">
             <span class="kicker">${s.features.length ? `Features at level${new Set(s.features.map((x) => x.level)).size > 1 ? 's' : ''} ${[...new Set(s.features.map((x) => x.level))].join(', ')}` : 'Subclass'}${s.quick || s.origin === 'file' ? '' : ' · Custom'}${s.hidden ? ' · Hidden from players' : ''}</span>
             <strong class="spell-name">${esc(s.name)}</strong>

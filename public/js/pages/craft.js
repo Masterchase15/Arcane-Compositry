@@ -4,10 +4,14 @@
  * The player picks Components, a Form, a Potency and modifiers; the panel on
  * the right shows Mana, damage, attack / Save DC and warnings, live.
  * All maths comes from rules/formulas.js.
+ *
+ * With the Homebrew filter set to a campaign, that campaign's Components are
+ * offered too. A campaign's DM can also save the finished spell straight into
+ * the campaign's Compositry spell list ("Save to campaign homebrew").
  */
 import { api, state } from '../api.js';
-import { esc, icon, optionTags, toast } from '../ui.js';
-import { PHYSICALS, ASPECTUALS, FORMS, ROMAN } from '../rules/constants.js';
+import { esc, icon, optionTags, toast, openDialog } from '../ui.js';
+import { PHYSICALS, ASPECTUALS, FORMS, ROMAN, SCHOOLS, ANY_CLASS } from '../rules/constants.js';
 import * as F from '../rules/formulas.js';
 import { derive, upgrade } from '../rules/character.js';
 import { appendComposition } from '../spellbook.js';
@@ -44,7 +48,7 @@ export async function render(main) {
         <section class="craft-section card">
           <div class="field"><label for="charId">Crafting as</label>
             <select id="charId" data-key="charId"><option value="">No character - I'll type my own bonuses</option>
-              ${optionTags(characters.map((c) => ({ value: c.id, label: `${c.name} - ${c.className || 'no class'} ${c.level}` })), '')}</select>
+              ${optionTags(characters.map((c) => ({ value: c.id, label: `${c.name} - ${c.className || 'no class'} ${c.level}${c.groupName ? ` (${c.groupName})` : ''}` })), '')}</select>
             <span class="hint">Uses that character's Proficiency Bonus, Invocation Modifier, Mana and Catalyst Throughput.</span></div>
         </section>` : ''}
 
@@ -190,11 +194,12 @@ export async function render(main) {
         <p class="roll-out" role="status">${rollMessage}</p>
         ${state.user
           ? characters.length
-            ? `<div class="field"><label for="save-to">Save to character</label><select id="save-to">${optionTags(characters.map((c) => ({ value: c.id, label: c.name })), s.charId || characters[0].id)}</select></div>
+            ? `<div class="field"><label for="save-to">Save to character</label><select id="save-to">${optionTags(characters.map((c) => ({ value: c.id, label: c.groupName ? `${c.name} (${c.groupName})` : c.name })), s.charId || characters[0].id)}</select></div>
                <button type="button" class="btn primary" id="save-btn">${icon('plus')}Save as Improvised Composition</button>`
             : `<a class="btn primary" href="#/characters/new">Create a character to save spells</a>`
           : `<a class="btn primary" href="#/account?next=/craft">Sign in to save to a character</a>`}
         <button type="button" class="btn" id="copy-btn">${icon('copy')}Copy summary</button>
+        ${dmCampaigns().length ? `<button type="button" class="btn" id="campaign-btn">${icon('flag')}Save to campaign homebrew</button>` : ''}
       </div>`;
     $('#potency-hint').textContent = `Potency ${ROMAN[s.potency]}: ${F.coreMana(s.potency)} Core Mana, ${F.damageDice(s.potency)} damage dice - ${F.POTENCY[s.potency].meaning.toLowerCase()}.`;
     $('#save-field').hidden = s.resolution !== 'save';
@@ -311,6 +316,7 @@ export async function render(main) {
       try { await navigator.clipboard.writeText(summary()); toast('Summary copied.'); }
       catch { toast('Could not copy - your browser blocked it.', 'error'); }
     }
+    if (e.target.closest('#campaign-btn')) return saveToCampaign();
     if (e.target.closest('#save-btn')) {
       const btn = e.target.closest('#save-btn');
       const r = compute();
@@ -327,7 +333,54 @@ export async function render(main) {
     }
   });
 
+  /**
+   * DM only: adds this spell to one of your campaigns' Compositry spell list.
+   * It starts hidden from players, so you can reveal it when they discover it.
+   */
+  function saveToCampaign() {
+    const r = compute();
+    const find = (t, id) => t.find((x) => x.id === id).label;
+    const preferred = dmCampaigns().find((g) => g.id === state.group?.id) || dmCampaigns()[0];
+    const dlg = openDialog({
+      title: 'Save to campaign homebrew', narrow: true,
+      body: `<p>Adds <b>${esc(s.name.trim() || autoName())}</b> to a campaign's Compositry spell list, where you can edit it later on the campaign's Spells tab.</p>
+        <div class="field"><label for="hb-campaign">Campaign</label><select id="hb-campaign">${optionTags(dmCampaigns().map((g) => ({ value: g.id, label: g.name })), preferred.id)}</select></div>
+        <div class="field"><label for="hb-school">School</label><select id="hb-school">${optionTags(SCHOOLS, SCHOOLS[0])}</select></div>
+        <label class="check"><input type="checkbox" id="hb-hidden" checked> Hidden from players until I publish it</label>
+        <span class="error" id="hb-err" hidden></span>`,
+      footer: `<button class="btn" data-close>Cancel</button><button class="btn primary" id="hb-save">Save to campaign</button>`,
+    });
+    dlg.querySelector('#hb-save').addEventListener('click', async () => {
+      const groupId = dlg.querySelector('#hb-campaign').value;
+      const entry = {
+        name: s.name.trim() || autoName(),
+        description: s.concept.trim() || summary(),
+        school: dlg.querySelector('#hb-school').value,
+        classes: [ANY_CLASS],
+        potency: s.potency, mana: r.mana.total,
+        physicals: s.physicals, aspectuals: s.aspectuals, form: s.form,
+        range: find(F.RANGE_COSTS, s.range), area: find(F.AREA_COSTS, s.area), duration: find(F.DURATION_COSTS, s.duration),
+        damage: r.damageText, resolution: r.resolve,
+        effect: [find(F.EFFECT_RANKS, s.effect), s.effectText.trim()].filter(Boolean).join(' - '),
+        creator: state.user.displayName,
+        hidden: dlg.querySelector('#hb-hidden').checked,
+      };
+      try {
+        await api('POST', '/catalog/compositry', entry, { group: groupId });
+        dlg.close();
+        const g = dmCampaigns().find((x) => x.id === groupId);
+        toast(`Saved to ${g.name}'s Compositry spells.`);
+      } catch (err) {
+        const box = dlg.querySelector('#hb-err');
+        box.textContent = err.message; box.hidden = false;
+      }
+    });
+  }
+
   drawChips();
   drawCustom();
   drawOut();
 }
+
+/** The campaigns you are a DM of. */
+const dmCampaigns = () => state.groups.filter((g) => g.role === 'dm');

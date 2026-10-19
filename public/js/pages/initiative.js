@@ -24,7 +24,7 @@
  *  1. Give it a default in blankCombatant().
  *  2. Add it to FIELDS (shown on each card) or to the details pop-up in openDetails().
  */
-import { api } from '../api.js';
+import { api, state } from '../api.js';
 import { reloadPage, replaceQuery } from '../nav.js';
 import { esc, icon, openDialog, confirmDialog, toast, debounce } from '../ui.js';
 import { npcDetail, characterSummary, openPicker } from '../details.js';
@@ -94,7 +94,7 @@ export async function initiativeTab(body, query) {
       <button class="btn primary" id="new-enc">${icon('plus')}New encounter</button>
     </div>`;
 
-  const openEncounter = (id) => { currentId = id; replaceQuery('/dm', { tab: 'initiative', enc: id }); reloadPage(); };
+  const openEncounter = (id) => { currentId = id; replaceQuery(`/campaign/${state.group.id}`, { tab: 'initiative', enc: id }); reloadPage(); };
   const createEncounter = async () => {
     try { openEncounter((await api('POST', '/encounters', { name: `Encounter ${encounters.length + 1}` })).encounter.id); }
     catch (err) { toast(err.message, 'error'); }
@@ -284,7 +284,7 @@ export async function initiativeTab(body, query) {
   }
 
   async function addCharacter() {
-    const { characters } = await api('GET', '/characters?all=1');
+    const { characters } = await api('GET', '/group/characters');
     const already = data.combatants.filter((c) => c.source === 'character').map((c) => c.sourceId);
     openPicker({
       title: 'Add a player character', entries: characters.filter((ch) => !already.includes(ch.id)),
@@ -424,7 +424,7 @@ export async function initiativeTab(body, query) {
     } else if (act === 'end') {
       const ok = await confirmDialog({ title: 'End this encounter?', message: `"${body.querySelector('#enc-name').value}" and everyone in it will be removed from the tracker. NPCs and characters themselves are not affected.`, confirmLabel: 'End encounter', danger: true });
       if (!ok) return;
-      try { await api('DELETE', `/encounters/${enc.id}`); currentId = null; replaceQuery('/dm', { tab: 'initiative' }); toast('Encounter ended.'); reloadPage(); }
+      try { await api('DELETE', `/encounters/${enc.id}`); currentId = null; replaceQuery(`/campaign/${state.group.id}`, { tab: 'initiative' }); toast('Encounter ended.'); reloadPage(); }
       catch (err) { toast(err.message, 'error'); }
       return;
     } else return;

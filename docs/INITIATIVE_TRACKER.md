@@ -1,6 +1,6 @@
 # Initiative Tracker
 
-DM page > **Initiative Tracker**. Only DM accounts can see it. Everything is
+Your campaign (as DM) > **Initiative Tracker**. Only the campaign's DMs can see it. Everything is
 saved as you work, so a refresh - or opening the site on another device -
 picks up where you left off.
 

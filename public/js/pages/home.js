@@ -7,6 +7,7 @@ import { esc, icon } from '../ui.js';
 const FEATURES = [
   { href: '#/craft', icon: 'sparkles', title: 'Spellcrafter', text: 'Pick Components, a Form and a Potency. Mana, damage, attack and Save DC are worked out for you.' },
   { href: '#/characters', icon: 'users', title: 'Character sheets', text: 'The full Arcane Compositry sheet, saved to your account. Track HP, Mana, Guard and Momentum on the fly.' },
+  { href: '#/campaigns', icon: 'flag', title: 'Campaigns', text: 'Join your DM\'s campaign with an invite code, or run your own: party roster, homebrew, notes and an initiative tracker.' },
   { href: '#/spells/codified', icon: 'scroll', title: 'Codified spells', text: 'Familiar D&D spells with their Mana costs. Filter by class and school, then add them to a character.' },
   { href: '#/spells/compositry', icon: 'leaf', title: 'Compositry spells', text: 'Compositions invented and codified at this table. The list grows as the campaign does.' },
   { href: '#/items', icon: 'sword', title: 'Items & Weapons', text: 'Weapons with their Attack Chain traits, armor, gear, magic items and Catalysts. Filter, then add to a character.' },

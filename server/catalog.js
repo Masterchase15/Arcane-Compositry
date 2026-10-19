@@ -10,18 +10,21 @@
  *   npcs         NPCs & enemies - DM ONLY, never sent to players   data/npcs.js
  *
  * Every list works the same way. Entries come from two places:
- *   1. FILES    the data files above (edit by hand)
- *   2. DM PAGE  entries saved through the site, stored in the database
+ *   1. FILES    the data files above (edit by hand) - shared by every group
+ *   2. DM PAGE  entries saved through the site by a group's DM, stored in the
+ *               database - seen only by that group
  *
- * The two are merged when the site asks for a list. A DM-page entry with the
- * same `id` as a file entry REPLACES the file entry (that is how "edit" works
- * for file entries); deleting it on the DM page brings the file version back.
+ * The two are merged when the site asks for a group's list. A DM-page entry
+ * with the same `id` as a file entry REPLACES the file entry for that group
+ * (that is how "edit" works for file entries); deleting it on the DM page
+ * brings the file version back. Visitors who are not in a group see only the
+ * files.
  *
  * HIDDEN OR PUBLIC
- *   Every entry is either public (players see it) or hidden (only DM accounts
- *   see it). The DM flips this on the DM page; the choice is stored in the
- *   `catalog_visibility` table, so it works for file entries too. An entry in
- *   a data file can also start hidden by writing  hidden: true.
+ *   Every entry is either public (players see it) or hidden (only the group's
+ *   DMs see it). A DM flips this on the DM page; the choice is stored per group
+ *   in the `group_visibility` table, so it works for file entries too. An
+ *   entry in a data file can also start hidden by writing  hidden: true.
  *
  * The data files are re-read automatically whenever they change on disk, so
  * you can edit a file, save, and refresh the browser - no restart needed.
@@ -29,7 +32,7 @@
  * ─── TO ADD A NEW FIELD TO A LIST ──────────────────────────────────────────
  *  Add it to that list's validate function below (so it is kept when saved),
  *  then show it on the list's page and add it to the DM form in
- *  public/js/pages/dm.js.
+ *  public/js/pages/campaign.js.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -235,10 +238,10 @@ export const listFile = (listName) => path.join(ROOT, LIST_DEFS[listName].file);
  * Checks one entry and returns a cleaned-up copy.
  * @returns {Promise<{ entry: object, errors: string[] }>}  errors is empty when the entry is valid
  */
-export async function validateEntry(listName, raw) {
+export async function validateEntry(listName, raw, groupId = null) {
   const errors = [];
   const needsClasses = ['codified', 'compositry', 'subclasses'].includes(listName);
-  const ctx = { classNames: needsClasses ? (await getList('classes')).map((c) => c.name) : [] };
+  const ctx = { classNames: needsClasses ? (await getList('classes', { groupId })).map((c) => c.name) : [] };
   const entry = LIST_DEFS[listName].validate(raw && typeof raw === 'object' ? raw : {}, errors, ctx);
   return { entry, errors };
 }
@@ -284,42 +287,43 @@ async function readFile(listName, file, mtime, previous) {
 }
 
 /**
- * File entries + DM-page entries, merged and sorted.
- * @param {{ includeHidden?: boolean }} options  pass includeHidden: false for what players may see
+ * File entries + one group's DM-page entries, merged and sorted.
+ * @param {{ groupId?: string|null, includeHidden?: boolean }} options
+ *   groupId: whose DM-page edits to merge in (null = the files only)
+ *   includeHidden: false for what players may see
  */
-export async function getList(listName, { includeHidden = true } = {}) {
+export async function getList(listName, { groupId = null, includeHidden = true } = {}) {
   const merged = new Map((await loadFile(listName)).map((s) => [s.id, s]));
-  const rows = db.prepare('SELECT id, data FROM custom_spells WHERE list = ?').all(listName);
+  const rows = db.prepare('SELECT id, data FROM custom_entries WHERE group_id = ? AND list = ?').all(groupId, listName);
   for (const row of rows) {
     merged.set(row.id, { ...JSON.parse(row.data), id: row.id, origin: merged.has(row.id) ? 'override' : 'custom' });
   }
   // The DM's hidden/public choice (if any) wins over what the entry itself says.
-  const visibility = new Map(db.prepare('SELECT id, hidden FROM catalog_visibility WHERE list = ?').all(listName).map((r) => [r.id, !!r.hidden]));
+  const visibility = new Map(db.prepare('SELECT id, hidden FROM group_visibility WHERE group_id = ? AND list = ?').all(groupId, listName).map((r) => [r.id, !!r.hidden]));
   const all = [...merged.values()].map((e) => ({ ...e, hidden: visibility.has(e.id) ? visibility.get(e.id) : !!e.hidden }));
   return all.filter((e) => includeHidden || !e.hidden).sort(LIST_DEFS[listName].sort);
 }
 
-// DM-page entries for every list share one table. (It is called custom_spells
-// because spells were the first list; the `list` column says which list a row belongs to.)
-export function saveCustom(listName, entry) {
+// DM-page entries for every list share one table; the `list` column says which list a row belongs to.
+export function saveCustom(groupId, listName, entry) {
   db.prepare(
-    `INSERT INTO custom_spells (list, id, data, updated_at) VALUES (?,?,?,?)
-     ON CONFLICT(list, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`
-  ).run(listName, entry.id, JSON.stringify(entry), new Date().toISOString());
+    `INSERT INTO custom_entries (group_id, list, id, data, updated_at) VALUES (?,?,?,?,?)
+     ON CONFLICT(group_id, list, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`
+  ).run(groupId, listName, entry.id, JSON.stringify(entry), new Date().toISOString());
 }
 
-export function deleteCustom(listName, id) {
-  return db.prepare('DELETE FROM custom_spells WHERE list = ? AND id = ?').run(listName, id).changes > 0;
+export function deleteCustom(groupId, listName, id) {
+  return db.prepare('DELETE FROM custom_entries WHERE group_id = ? AND list = ? AND id = ?').run(groupId, listName, id).changes > 0;
 }
 
-/** Marks one entry hidden (DM only) or public (everyone). Works for file entries too. */
-export function setHidden(listName, id, hidden) {
+/** Marks one entry hidden (the group's DMs only) or public (the whole group). Works for file entries too. */
+export function setHidden(groupId, listName, id, hidden) {
   db.prepare(
-    `INSERT INTO catalog_visibility (list, id, hidden) VALUES (?,?,?)
-     ON CONFLICT(list, id) DO UPDATE SET hidden = excluded.hidden`
-  ).run(listName, id, hidden ? 1 : 0);
+    `INSERT INTO group_visibility (group_id, list, id, hidden) VALUES (?,?,?,?)
+     ON CONFLICT(group_id, list, id) DO UPDATE SET hidden = excluded.hidden`
+  ).run(groupId, listName, id, hidden ? 1 : 0);
 }
 
-export function forgetVisibility(listName, id) {
-  db.prepare('DELETE FROM catalog_visibility WHERE list = ? AND id = ?').run(listName, id);
+export function forgetVisibility(groupId, listName, id) {
+  db.prepare('DELETE FROM group_visibility WHERE group_id = ? AND list = ? AND id = ?').run(groupId, listName, id);
 }

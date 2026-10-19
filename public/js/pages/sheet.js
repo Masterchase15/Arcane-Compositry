@@ -18,7 +18,7 @@
  *  1. Give it a default in blankCharacter() (rules/character.js).
  *  2. Add  text('section.field', 'Label')  to the right panel below.
  */
-import { api, state, loadSpells, loadItems, loadSubclasses, subclassesOf } from '../api.js';
+import { api, state, useGroup, campaignHref, loadSpells, loadItems, loadSubclasses, subclassesOf } from '../api.js';
 import { requireUser } from '../nav.js';
 import { esc, icon, optionTags, toast, debounce, getPath, setPath, confirmDialog, openDialog } from '../ui.js';
 import { ABILITIES, SKILLS, CLASS_NAMES, COMPONENTS, findComponent, findClass, FORMS, SPELL_STATUSES, ROMAN } from '../rules/constants.js';
@@ -47,6 +47,8 @@ const NEW_ROW = {
 export async function render(main, { params }) {
   if (!requireUser(main, 'open this character')) return;
   const loaded = await api('GET', `/characters/${params[0]}`);
+  // A character in a campaign uses that campaign's homebrew (classes, spells, items).
+  await useGroup(loaded.groupId);
   await loadSubclasses().catch(() => {}); // only used to suggest subclass names
   const c = upgrade(loaded.data);
   const id = loaded.id;
@@ -351,7 +353,10 @@ export async function render(main, { params }) {
   // ── Page shell ─────────────────────────────────────────────────────────────
   const isOwner = loaded.ownerId === state.user.id;
   main.innerHTML = `
-    <a class="btn ghost sm" href="${isOwner ? '#/characters' : '#/dm'}">${icon('back')}${isOwner ? 'My characters' : 'DM tools'}</a>
+    <div class="row between">
+      <a class="btn ghost sm" href="${isOwner ? '#/characters' : campaignHref(loaded.groupId, { tab: 'party' })}">${icon('back')}${isOwner ? 'My characters' : 'Back to the party'}</a>
+      ${loaded.groupId ? `<a class="badge gold" href="${campaignHref(loaded.groupId)}">${icon('flag')} ${esc(loaded.groupName)}</a>` : '<span class="badge">Not in a campaign</span>'}
+    </div>
     ${isOwner ? '' : `<div class="readonly-banner">${icon('shield')}<span>You are editing <b>${esc(loaded.ownerName)}</b>'s character as DM. Changes save to their sheet.</span></div>`}
     <div class="sheet-head">
       <div>

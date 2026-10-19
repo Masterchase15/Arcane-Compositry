@@ -1,8 +1,10 @@
 /**
- * pages/account.js - sign in, create an account, change password (#/account).
+ * pages/account.js - sign in, create an account (#/account). Once signed in:
+ * change password, and - for the site admin - every account on the site, with
+ * "Set password" for anyone locked out. Campaigns are on pages/campaigns.js.
  */
-import { api, state, refreshCatalog } from '../api.js';
-import { esc, icon, toast } from '../ui.js';
+import { api, state, loadUser, refreshCatalog, campaignHref } from '../api.js';
+import { esc, icon, toast, openDialog } from '../ui.js';
 
 export function render(main, { query }) {
   if (state.user) return renderProfile(main);
@@ -40,11 +42,16 @@ export function render(main, { query }) {
               </div>
               ${creating ? '<span class="hint">At least 8 characters. Your password manager can save it.</span>' : ''}${err('password')}
             </div>
+            ${creating ? `<div class="field">
+              <label for="inviteCode">Invite code${state.inviteRequired ? ' <span aria-hidden="true">*</span>' : ''}</label>
+              <input id="inviteCode" name="inviteCode" autocomplete="off" autocapitalize="characters" spellcheck="false"${state.inviteRequired ? ' required' : ''} value="${esc(keep.inviteCode || '')}"${attrs('inviteCode')}>
+              <span class="hint">${state.inviteRequired ? 'Your DM gives this to their players. It also adds you to their campaign.' : "Optional. Your DM's campaign invite code adds you to their campaign straight away."}</span>${err('inviteCode')}
+            </div>` : ''}
             <button class="btn primary" type="submit">${creating ? 'Create account' : 'Sign in'}</button>
           </form>
           <p class="muted">${creating ? 'Already have an account?' : 'No account yet?'}
             <button class="btn ghost sm" id="swap">${creating ? 'Sign in instead' : 'Create one'}</button></p>
-          ${creating ? '' : '<p class="small muted">Forgot your password? Ask your DM - they can set a new one for you from the DM page.</p>'}
+          ${creating ? '' : '<p class="small muted">Forgot your password? Ask the site admin (or your DM, who can pass it on) to set a new one for you.</p>'}
         </section>
         <aside class="stack">
           <div class="note-box"><h4>Why an account?</h4>
@@ -69,10 +76,12 @@ export function render(main, { query }) {
       button.disabled = true;
       button.textContent = 'One moment...';
       try {
-        state.user = (await api('POST', `/auth/${creating ? 'register' : 'login'}`, body)).user;
+        const { joinedGroup } = await api('POST', `/auth/${creating ? 'register' : 'login'}`, body);
+        await loadUser();
         await refreshCatalog();
         toast(creating ? `Welcome, ${state.user.displayName}!` : 'Signed in.');
-        location.hash = `#${next.startsWith('/') ? next : '/characters'}`;
+        // An invite code took them into a campaign: go straight to it.
+        location.hash = joinedGroup ? campaignHref(joinedGroup) : `#${next.startsWith('/') ? next : '/characters'}`;
       } catch (error) {
         draw(error.fields || {}, error.message);
         // Send keyboard and screen-reader users straight to the problem.
@@ -94,22 +103,25 @@ function renderProfile(main) {
         <h2>Details</h2>
         <dl class="stat-grid">
           <div><dt>Username</dt><dd>${esc(u.username)}</dd></div>
-          <div><dt>Role</dt><dd>${u.role === 'dm' ? 'Dungeon Master' : 'Player'}</dd></div>
+          <div><dt>Campaigns</dt><dd>${state.groups.length}</dd></div>
+          ${u.isAdmin ? '<div><dt>Site role</dt><dd>Admin</dd></div>' : ''}
         </dl>
         <div class="row"><a class="btn primary" href="#/characters">${icon('users')}My characters</a>
-          ${u.role === 'dm' ? `<a class="btn" href="#/dm">${icon('shield')}DM tools</a>` : ''}</div>
+          <a class="btn" href="#/campaigns">${icon('flag')}My campaigns</a></div>
       </section>
       <section class="card">
         <h2>Change password</h2>
-        <form class="stack" novalidate>
+        <form class="stack" id="pw-form" novalidate>
           <input type="text" name="username" autocomplete="username" value="${esc(u.username)}" hidden>
           <div class="field"><label for="current">Current password</label><input id="current" name="current" type="password" autocomplete="current-password" required><span class="error" id="err-current" hidden></span></div>
           <div class="field"><label for="next">New password</label><input id="next" name="next" type="password" autocomplete="new-password" required><span class="hint">At least 8 characters.</span><span class="error" id="err-next" hidden></span></div>
           <button class="btn primary" type="submit">Update password</button>
         </form>
       </section>
-    </div>`;
-  main.querySelector('form').addEventListener('submit', async (e) => {
+    </div>
+    ${u.isAdmin ? '<section class="card stack gap-above" id="admin"><h2>All accounts</h2><p class="muted">Loading...</p></section>' : ''}`;
+
+  main.querySelector('#pw-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     form.querySelectorAll('.error').forEach((el) => { el.hidden = true; });
@@ -119,8 +131,48 @@ function renderProfile(main) {
       toast('Password updated.');
     } catch (error) {
       const key = Object.keys(error.fields || {})[0];
-      const slot = form.querySelector(`#err-${key}`);
+      const slot = key && form.querySelector(`#err-${key}`);
       if (slot) { slot.textContent = error.fields[key]; slot.hidden = false; form[key].focus(); } else toast(error.message, 'error');
+    }
+  });
+
+  if (u.isAdmin) adminSection(main.querySelector('#admin'));
+}
+
+/** Site admin only: every account, with "Set password". (Admins are made on the server: npm run make-admin.) */
+async function adminSection(box) {
+  const { users } = await api('GET', '/admin/users');
+  box.innerHTML = `
+    <h2>All accounts</h2>
+    <p class="small muted">You are the site admin. Set a temporary password for anyone who is locked out and tell them in person. Admins are added or removed on the server with <code>npm run make-admin</code>.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Username</th><th>Groups</th><th>Actions</th></tr></thead>
+      <tbody>${users.map((x) => `<tr>
+        <td><b>${esc(x.displayName)}</b>${x.isAdmin ? ' <span class="badge gold">Admin</span>' : ''}${x.id === state.user.id ? ' (you)' : ''}</td>
+        <td>${esc(x.username)}</td><td>${esc(x.groups || '-')}</td>
+        <td><div class="row">${x.id === state.user.id ? '' : `
+          <button class="btn sm" data-pw="${x.id}" data-name="${esc(x.displayName)}">Set password</button>`}</div></td></tr>`).join('')}</tbody></table></div>`;
+
+  box.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.dataset.pw) {
+      const dlg = openDialog({
+        title: `New password for ${esc(btn.dataset.name)}`, narrow: true,
+        body: `<p>Set a temporary password and tell them in person. They are signed out everywhere and can change it under Account settings.</p>
+          <div class="field"><label for="temp-pw">Temporary password</label><input id="temp-pw" type="text" autocomplete="off" minlength="8"><span class="hint">At least 8 characters.</span><span class="error" id="temp-err" hidden></span></div>`,
+        footer: `<button class="btn" data-close>Cancel</button><button class="btn primary" id="temp-save">Set password</button>`,
+      });
+      dlg.querySelector('#temp-save').addEventListener('click', async () => {
+        try {
+          await api('PUT', `/admin/users/${btn.dataset.pw}/password`, { password: dlg.querySelector('#temp-pw').value });
+          dlg.close();
+          toast('Password updated.');
+        } catch (err) {
+          const box2 = dlg.querySelector('#temp-err');
+          box2.textContent = err.message; box2.hidden = false;
+        }
+      });
     }
   });
 }

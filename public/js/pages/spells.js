@@ -8,7 +8,7 @@
  *
  * The spells themselves come from data/spells/*.js and the DM page.
  */
-import { api, loadSpells, state, isDM } from '../api.js';
+import { api, loadSpells, state, isDM, campaignHref } from '../api.js';
 import { replaceQuery } from '../nav.js';
 import { esc, icon, paragraphs, openDialog, optionTags, toast, debounce } from '../ui.js';
 import { SCHOOLS, CLASS_NAMES, ROMAN, ANY_CLASS } from '../rules/constants.js';
@@ -66,14 +66,14 @@ export async function render(main, { params, query }) {
       <div class="field"><label for="level">${isCodified ? 'Level' : 'Potency'}</label>
         <select id="level"><option value="">Any</option>${optionTags(levels.map((n) => ({ value: n, label: levelLabel(n) })), f.level)}</select></div>
       ${characters.length ? `<div class="field span-all"><label for="char">Check against my character</label>
-        <select id="char"><option value="">No character selected</option>${optionTags(characters.map((c) => ({ value: c.id, label: `${c.name} - ${c.className || 'no class'} ${c.level}` })), f.char)}</select>
+        <select id="char"><option value="">No character selected</option>${optionTags(characters.map((c) => ({ value: c.id, label: `${c.name} - ${c.className || 'no class'} ${c.level}${c.groupName ? ` (${c.groupName})` : ''}` })), f.char)}</select>
         <span class="hint">Shows which spells that character's class can learn, and where "Add" will put them.</span></div>` : ''}
     </form>
     <div class="row between">
       <p class="muted" id="count" role="status" aria-live="polite"></p>
       <div class="row">
         <button class="btn sm ghost" id="clear" type="button">Clear filters</button>
-        ${isDM() ? `<a class="btn sm" href="#/dm">${icon('plus')}Add a spell</a>` : ''}
+        ${isDM() ? `<a class="btn sm" href="${campaignHref(undefined, { tab: 'spells' })}">${icon('plus')}Add a spell</a>` : ''}
       </div>
     </div>
     <div class="spell-list" id="list"></div>`;
