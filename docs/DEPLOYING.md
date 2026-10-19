@@ -38,10 +38,13 @@ Any host that runs Node.js 22.13+ and gives you a **persistent disk** works
 - The host provides HTTPS; set `COOKIE_SECURE=1`.
 - The host puts a proxy in front of the site; set `TRUST_PROXY=1` so the
   sign-in attempt limit counts each player separately.
-- Set `INVITE_CODE` so strangers cannot sign up. Do this **before** the site
-  goes live: the first account becomes the site admin. With it set, signing up
+- Set `INVITE_CODE` so strangers cannot sign up. With it set, signing up
   needs either this code (give it to people who will run their own group) or a
   group's invite code (players).
+- Make yourself site admin: sign up on the site, then open the host's shell
+  (for example `fly ssh console`, or the shell / `railway ssh` on Railway) and
+  run `npm run make-admin <your username>`. Run it in the app folder, with the
+  same `STORAGE_DIR` the site uses, so it changes the right database.
 
 Avoid "serverless" hosts with no disk (Vercel, Netlify functions): the
 database file would be wiped.

@@ -449,12 +449,6 @@ function listAccounts() {
   return { users: rows.map((u) => ({ ...auth.publicUser(u), createdAt: u.created_at, groups: u.group_names || '' })) };
 }
 
-function setAdmin({ user, params, body }) {
-  if (params.id === user.id) throw fail(400, 'You cannot change your own admin status.');
-  if (!db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(body.isAdmin ? 1 : 0, params.id).changes) throw fail(404, 'User not found.');
-  return { ok: true };
-}
-
 /** The admin sets a temporary password for someone who forgot theirs. */
 function resetPassword({ params, body }) {
   const problem = auth.validatePassword(body.password);
@@ -516,7 +510,7 @@ const ROUTES = [
   ['DELETE', '/api/characters/:id',          'user',   deleteCharacter],
 
   ['GET',    '/api/admin/users',             'admin',  listAccounts],
-  ['PUT',    '/api/admin/users/:id/admin',   'admin',  setAdmin],
+  // (Admins are made on the server with scripts/make-admin.js - deliberately no route for it.)
   ['PUT',    '/api/admin/users/:id/password', 'admin', resetPassword],
 ].map(([method, pattern, access, handler]) => ({
   method, access, handler,

@@ -4,8 +4,7 @@
  * "Set password" for anyone locked out. Campaigns are on pages/campaigns.js.
  */
 import { api, state, loadUser, refreshCatalog, campaignHref } from '../api.js';
-import { reloadPage } from '../nav.js';
-import { esc, icon, toast, openDialog, confirmDialog } from '../ui.js';
+import { esc, icon, toast, openDialog } from '../ui.js';
 
 export function render(main, { query }) {
   if (state.user) return renderProfile(main);
@@ -140,34 +139,23 @@ function renderProfile(main) {
   if (u.isAdmin) adminSection(main.querySelector('#admin'));
 }
 
-/** Site admin only: every account, with "Set password" and "Make admin". */
+/** Site admin only: every account, with "Set password". (Admins are made on the server: npm run make-admin.) */
 async function adminSection(box) {
   const { users } = await api('GET', '/admin/users');
   box.innerHTML = `
     <h2>All accounts</h2>
-    <p class="small muted">You are the site admin. Set a temporary password for anyone who is locked out and tell them in person.</p>
+    <p class="small muted">You are the site admin. Set a temporary password for anyone who is locked out and tell them in person. Admins are added or removed on the server with <code>npm run make-admin</code>.</p>
     <div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Username</th><th>Groups</th><th>Actions</th></tr></thead>
       <tbody>${users.map((x) => `<tr>
         <td><b>${esc(x.displayName)}</b>${x.isAdmin ? ' <span class="badge gold">Admin</span>' : ''}${x.id === state.user.id ? ' (you)' : ''}</td>
         <td>${esc(x.username)}</td><td>${esc(x.groups || '-')}</td>
         <td><div class="row">${x.id === state.user.id ? '' : `
-          <button class="btn sm" data-pw="${x.id}" data-name="${esc(x.displayName)}">Set password</button>
-          <button class="btn sm ghost" data-admin="${x.isAdmin ? '' : '1'}" data-id="${x.id}" data-name="${esc(x.displayName)}">${x.isAdmin ? 'Remove admin' : 'Make admin'}</button>`}</div></td></tr>`).join('')}</tbody></table></div>`;
+          <button class="btn sm" data-pw="${x.id}" data-name="${esc(x.displayName)}">Set password</button>`}</div></td></tr>`).join('')}</tbody></table></div>`;
 
   box.addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
-    if (btn.dataset.id && 'admin' in btn.dataset) {
-      const making = btn.dataset.admin === '1';
-      const ok = await confirmDialog({
-        title: making ? 'Make site admin?' : 'Remove site admin?',
-        message: making ? `${btn.dataset.name} will be able to reset anyone's password and make other admins.` : `${btn.dataset.name} will no longer be a site admin.`,
-        confirmLabel: making ? 'Make admin' : 'Remove admin',
-      });
-      if (!ok) return;
-      try { await api('PUT', `/admin/users/${btn.dataset.id}/admin`, { isAdmin: making }); reloadPage(); } catch (err) { toast(err.message, 'error'); }
-    }
     if (btn.dataset.pw) {
       const dlg = openDialog({
         title: `New password for ${esc(btn.dataset.name)}`, narrow: true,

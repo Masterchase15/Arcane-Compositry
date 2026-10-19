@@ -19,8 +19,10 @@ Then open <http://localhost:3000>. On Windows you can also double-click
 **Restart it after changing anything in the `server/` folder or `server.js`.**
 Changes under `public/` and `data/` only need a browser refresh.
 
-**The first account you create becomes the site admin** (it can reset
-anyone's password). Create yours before sharing the address.
+**Site admins** can reset anyone's password (Account settings > All
+accounts). Nobody is an admin by default: create your account on the site,
+then on the server run `npm run make-admin <your username>`. Run
+`npm run make-admin` with nothing after it to list the current admins.
 
 **Campaigns.** Everything on the site works without one. To run a game, open
 **Campaigns**, start a campaign - you become its DM - and give your players its
@@ -291,7 +293,7 @@ docs/                guides for you
 node server.js                  # run the site
 node --watch server.js          # run it and restart automatically when server files change
 node scripts/check-spells.js    # check everything in data/ for typos
-node scripts/make-admin.js NAME # make the account NAME a site admin
+node scripts/make-admin.js NAME # make the account NAME a site admin (add "off" to undo; no NAME lists admins)
 ```
 
 (`npm start`, `npm run check-data` and `npm run make-admin NAME` do the same

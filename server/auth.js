@@ -5,9 +5,11 @@
  * - Logging in creates a random session token, sent to the browser as an
  *   HttpOnly cookie (JavaScript on the page cannot read it). Only a SHA-256
  *   hash of the token is kept in the database.
- * - The FIRST account ever created becomes the site admin automatically (the
- *   admin can reset anyone's password and make other admins). To make another
- *   admin from the command line, run:  npm run make-admin <username>
+ * - Every new account is an ordinary account. Site admins (who can reset
+ *   anyone's password) are made ONLY from the command line on the server:
+ *     npm run make-admin <username>        (see scripts/make-admin.js)
+ *   Nothing on the website can grant admin, so it cannot be taken over by
+ *   whoever signs up first or by a stolen admin login.
  * - Being a DM is not part of the account: it is a role inside a group (see
  *   memberships in db.js). Whoever creates a group is its DM.
  */
@@ -50,12 +52,11 @@ export function validatePassword(password) {
 }
 
 export function createUser({ username, displayName, password }) {
-  const isFirst = db.prepare('SELECT COUNT(*) AS n FROM users').get().n === 0;
   const user = {
     id: crypto.randomUUID(),
     username,
     display_name: (displayName || username).trim().slice(0, 40),
-    is_admin: isFirst ? 1 : 0,
+    is_admin: 0, // admins are made with scripts/make-admin.js only
   };
   db.prepare(
     'INSERT INTO users (id, username, display_name, password_hash, is_admin, created_at) VALUES (?,?,?,?,?,?)'

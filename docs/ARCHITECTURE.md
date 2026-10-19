@@ -120,10 +120,10 @@ group sees the same one. They save as you type, like the sheet.
 
 - Usernames and passwords only - no email is collected.
 - Passwords are hashed with scrypt; logins use an HttpOnly cookie.
-- The first account created is the **site admin**. The admin can set a new
-  password for anyone who forgot theirs, and make other admins (Account
-  settings > All accounts). `npm run make-admin NAME` does the same from the
-  command line.
+- **Site admins** can set a new password for anyone who forgot theirs (Account
+  settings > All accounts). Admins are made and removed **only** on the server,
+  with `npm run make-admin NAME` (`scripts/make-admin.js`); the website has no
+  way to grant admin, and new accounts never start as admins.
 
 ## Campaigns ("groups" in the code)
 
