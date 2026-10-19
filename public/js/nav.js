@@ -25,6 +25,18 @@ export function requireUser(main, what) {
   return false;
 }
 
+/**
+ * For pages that need a group (characters belong to one). Shows a "join or
+ * create a group" message and returns false when the user is not in any.
+ */
+export function requireGroup(main) {
+  if (state.group) return true;
+  main.innerHTML = `<div class="empty">${icon('users')}<h2>Join a group first</h2>
+    <p>Characters belong to a campaign group. Ask your DM for their group's invite code, or start your own group.</p>
+    <a class="btn primary" href="#/account">Join or create a group</a></div>`;
+  return false;
+}
+
 /** Redraws the current page from scratch (after deleting something, for example). */
 export function reloadPage() {
   window.dispatchEvent(new HashChangeEvent('hashchange'));

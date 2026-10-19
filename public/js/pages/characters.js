@@ -2,11 +2,11 @@
  * pages/characters.js - "My characters" (#/characters).
  */
 import { api } from '../api.js';
-import { requireUser, reloadPage } from '../nav.js';
+import { requireUser, requireGroup, reloadPage } from '../nav.js';
 import { esc, icon, confirmDialog, toast } from '../ui.js';
 
 export async function render(main) {
-  if (!requireUser(main, 'see your characters')) return;
+  if (!requireUser(main, 'see your characters') || !requireGroup(main)) return;
   const { characters } = await api('GET', '/characters');
 
   main.innerHTML = `

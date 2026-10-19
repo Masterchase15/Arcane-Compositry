@@ -118,6 +118,11 @@ small, .small { font-size: .875rem; }
 .nav-links a:hover { background: var(--surface-2); color: var(--ink); }
 .nav-links a[aria-current='page'] { color: var(--primary); background: var(--sage); }
 .topbar-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+/* The current group's name in the top bar: shortened when long, icon only on small phones. */
+.group-name { max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-actions .btn span { white-space: nowrap; }
+@media (max-width: 760px) { .group-name { max-width: 9ch; } }
+@media (max-width: 480px) { .group-name { display: none; } }
 
 .tabbar {
   display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -520,3 +525,9 @@ dialog[open] { display: flex; flex-direction: column; animation: pop .18s ease-o
   .topbar, .tabbar, .toasts, .tabs, .btn { display: none !important; }
   main { max-width: none; padding: 0; }
 }
+
+/* Groups: the invite code on the DM page, and one-line forms (text box + button). */
+.invite-code { font: 700 1.4rem/1.2 ui-monospace, Consolas, monospace; letter-spacing: .15em; padding: 6px 12px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); }
+.inline-form { display: flex; gap: 8px; align-items: stretch; }
+.inline-form input { flex: 1; min-width: 0; }
+.gap-above { margin-top: 24px; }

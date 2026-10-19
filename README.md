@@ -19,8 +19,14 @@ Then open <http://localhost:3000>. On Windows you can also double-click
 **Restart it after changing anything in the `server/` folder or `server.js`.**
 Changes under `public/` and `data/` only need a browser refresh.
 
-**The first account you create becomes the DM.** Create yours before sharing
-the address with players.
+**The first account you create becomes the site admin** (it can reset
+anyone's password). Create yours before sharing the address.
+
+**Each campaign is a group.** Under Account settings, start a group - you become
+its DM - and give your players its invite code from the DM page (Group tab).
+Several groups can use the same site, each with its own characters, notes and
+homebrew. When the site is online, set `INVITE_CODE` so only people with an
+invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 
 ## What is where
 
@@ -283,10 +289,10 @@ docs/                guides for you
 node server.js                  # run the site
 node --watch server.js          # run it and restart automatically when server files change
 node scripts/check-spells.js    # check everything in data/ for typos
-node scripts/make-dm.js NAME    # give the account NAME the DM role
+node scripts/make-admin.js NAME # make the account NAME a site admin
 ```
 
-(`npm start`, `npm run check-data` and `npm run make-dm NAME` do the same
+(`npm start`, `npm run check-data` and `npm run make-admin NAME` do the same
 things. If PowerShell refuses to run `npm` with a "running scripts is disabled"
 message, use the `node ...` forms above or type `npm.cmd` instead of `npm`.)
 

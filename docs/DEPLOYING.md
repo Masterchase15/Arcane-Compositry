@@ -36,6 +36,12 @@ Any host that runs Node.js 22.13+ and gives you a **persistent disk** works
 - Set `STORAGE_DIR` to the path of the persistent disk, so the database
   survives restarts.
 - The host provides HTTPS; set `COOKIE_SECURE=1`.
+- The host puts a proxy in front of the site; set `TRUST_PROXY=1` so the
+  sign-in attempt limit counts each player separately.
+- Set `INVITE_CODE` so strangers cannot sign up. Do this **before** the site
+  goes live: the first account becomes the site admin. With it set, signing up
+  needs either this code (give it to people who will run their own group) or a
+  group's invite code (players).
 
 Avoid "serverless" hosts with no disk (Vercel, Netlify functions): the
 database file would be wiped.
@@ -48,6 +54,8 @@ database file would be wiped.
 | `HOST`          | Network interface                                | `0.0.0.0`   |
 | `STORAGE_DIR`   | Folder for the database file                     | `./storage` |
 | `COOKIE_SECURE` | Set to `1` when the site is served over HTTPS    | off         |
+| `INVITE_CODE`   | Lets people sign up without a group's invite code (e.g. new DMs). When set, signing up needs this code or a group's code | off: anyone can sign up |
+| `TRUST_PROXY`   | Number of proxies in front of the site (`1` on Railway, Render, Fly.io, Cloudflare Tunnel...). Leave unset when players connect straight to the server. | `0` |
 
 ### Use HTTPS when it is on the public internet
 

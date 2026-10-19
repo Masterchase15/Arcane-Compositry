@@ -10,7 +10,7 @@
  *  2. Add one line to ROUTES below.
  *  3. Optionally add it to NAV so it shows in the menu.
  */
-import { state, loadUser, loadClasses, loadComponents, refreshCatalog, api, isDM } from './api.js';
+import { state, loadUser, loadClasses, loadComponents, refreshCatalog, setGroup, api, isDM } from './api.js';
 import { esc, icon, openDialog, toast } from './ui.js';
 
 const ROUTES = [
@@ -86,6 +86,8 @@ export function drawShell() {
       ${isDM() ? link({ href: '#/dm', label: 'DM', icon: 'crown' }) : ''}
     </nav>
     <div class="topbar-actions">
+      ${user && state.group ? `<button class="btn ghost" id="group-btn" aria-label="Group: ${esc(state.group.name)}. Switch group">${icon('users')}<span class="group-name">${esc(state.group.name)}</span></button>` : ''}
+      ${user && !state.group ? `<a class="btn ghost" href="#/account">${icon('plus')}<span>Join a group</span></a>` : ''}
       <button class="btn ghost icon-only" id="theme-btn" aria-label="Switch to ${isDark() ? 'light' : 'dark'} theme">${icon(isDark() ? 'sun' : 'moon')}</button>
       ${user
         ? `<button class="btn" id="account-btn">${icon('user')}<span>${esc(user.displayName)}</span></button>`
@@ -97,6 +99,31 @@ export function drawShell() {
   document.getElementById('theme-btn').addEventListener('click', toggleTheme);
   document.getElementById('menu-btn').addEventListener('click', () => openMenu(false));
   document.getElementById('account-btn')?.addEventListener('click', () => openMenu(true));
+  document.getElementById('group-btn')?.addEventListener('click', openGroupPicker);
+}
+
+/** Which group (campaign) the site is showing. Each has its own characters, DM tools and homebrew. */
+function openGroupPicker() {
+  const dlg = openDialog({
+    title: 'Your groups',
+    narrow: true,
+    body: `<div class="menu-list">
+      ${state.groups.map((g) => `<button data-group="${g.id}"${g.id === state.group?.id ? ' aria-current="true"' : ''}>
+        ${icon(g.id === state.group?.id ? 'check' : g.role === 'dm' ? 'crown' : 'users')}${esc(g.name)}${g.role === 'dm' ? ' <span class="badge gold">DM</span>' : ''}</button>`).join('')}
+      <hr>
+      <a href="#/account" data-close>${icon('plus')}Create or join a group</a>
+    </div>`,
+  });
+  dlg.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-group]');
+    if (!btn) return;
+    dlg.close();
+    if (btn.dataset.group === state.group?.id) return;
+    await setGroup(btn.dataset.group);
+    toast(`Now showing ${state.group.name}.`);
+    // The DM page makes no sense in a group where you are a player.
+    if (location.hash.startsWith('#/dm') && !isDM()) location.hash = '#/'; else route();
+  });
 }
 
 /** The slide-up menu: everything that does not fit in the bottom bar, plus account actions. */
@@ -123,6 +150,8 @@ function openMenu(accountOnly) {
   dlg.querySelector('#signout')?.addEventListener('click', async () => {
     await api('POST', '/auth/logout').catch(() => {});
     state.user = null;
+    state.groups = [];
+    state.group = null;
     await refreshCatalog();
     dlg.close();
     toast('Signed out.');
@@ -177,7 +206,9 @@ async function route() {
 // ── Start ────────────────────────────────────────────────────────────────────
 applyTheme();
 drawShell();
-await Promise.all([loadUser(), loadClasses().catch(() => {}), loadComponents().catch(() => {})]);
+// The user (and so their group) first: the class and Component lists depend on the group.
+await loadUser();
+await Promise.all([loadClasses().catch(() => {}), loadComponents().catch(() => {})]);
 window.addEventListener('hashchange', route);
 route();
 

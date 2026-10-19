@@ -1,15 +1,21 @@
 /**
  * api.js - how the pages talk to the server (see server/api.js for the other side).
  *
- * Also holds the tiny bit of shared state: who is signed in, and the spell lists.
+ * Also holds the tiny bit of shared state: who is signed in, which group
+ * (campaign) they are looking at, and the spell lists.
+ *
+ * Every request carries ?group=<id> of the current group, so the server knows
+ * whose characters, notes and DM-page edits to use. `state.user.role` is the
+ * user's role in that group ('dm' or 'player'), so isDM() means "DM of this group".
  */
 import { setClasses, setComponents } from './rules/constants.js';
 
 /** Sends a request to /api/... and returns the JSON answer. Throws an Error with .fields on failure. */
 export async function api(method, path, body) {
   let response;
+  const url = state.group ? `/api${path}${path.includes('?') ? '&' : '?'}group=${encodeURIComponent(state.group.id)}` : `/api${path}`;
   try {
-    response = await fetch(`/api${path}`, {
+    response = await fetch(url, {
       method,
       headers: body === undefined && method === 'GET' ? {} : { 'Content-Type': 'application/json' },
       body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
@@ -25,12 +31,41 @@ export async function api(method, path, body) {
   return data;
 }
 
-/** Shared state. `user` is null when signed out. */
-export const state = { user: null, spells: null, items: null, classes: null, components: null, subclasses: null };
+/**
+ * Shared state. `user` is null when signed out. `groups` = every group the user
+ * is in; `group` = the one being shown (null if none). `inviteRequired` = sign-up
+ * needs an invite code.
+ */
+export const state = { user: null, groups: [], group: null, inviteRequired: false, spells: null, items: null, classes: null, components: null, subclasses: null };
 
+const GROUP_KEY = 'ac-group';
+const remember = {
+  get() { try { return localStorage.getItem(GROUP_KEY); } catch { return null; } },
+  set(id) { try { if (id) localStorage.setItem(GROUP_KEY, id); else localStorage.removeItem(GROUP_KEY); } catch { /* private mode: ignore */ } },
+};
+
+/** Loads who is signed in and their groups, and picks the group to show (the last one used, else the first). */
 export async function loadUser() {
-  try { state.user = (await api('GET', '/auth/me')).user; } catch { state.user = null; }
+  try {
+    const me = await api('GET', '/auth/me');
+    state.user = me.user;
+    state.groups = me.groups || [];
+    state.inviteRequired = !!me.inviteRequired;
+  } catch { state.user = null; state.groups = []; }
+  pickGroup(remember.get());
   return state.user;
+}
+
+function pickGroup(id) {
+  state.group = state.groups.find((g) => g.id === id) || state.groups[0] || null;
+  if (state.user) state.user.role = state.group?.role || 'player';
+  if (state.group) remember.set(state.group.id);
+}
+
+/** Switches to another group, then re-fetches the lists (each group has its own edits and hidden entries). */
+export async function setGroup(id) {
+  pickGroup(id);
+  await refreshCatalog();
 }
 
 /** Spell lists are fetched once and reused; pass true to force a fresh copy (after a DM edit). */

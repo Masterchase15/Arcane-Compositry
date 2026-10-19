@@ -4,7 +4,7 @@
  * be calculated, saves the sheet and opens it.
  */
 import { api, state } from '../api.js';
-import { requireUser } from '../nav.js';
+import { requireUser, requireGroup } from '../nav.js';
 import { esc, icon, optionTags, toast } from '../ui.js';
 import { ABILITIES, CLASSES, findClass } from '../rules/constants.js';
 import * as F from '../rules/formulas.js';
@@ -25,7 +25,7 @@ function suggestedScores(className) {
 const ALIGNMENTS = ['', 'Lawful Good', 'Neutral Good', 'Chaotic Good', 'Lawful Neutral', 'Neutral', 'Chaotic Neutral', 'Lawful Evil', 'Neutral Evil', 'Chaotic Evil'];
 
 export function render(main, { query }) {
-  if (!requireUser(main, 'create a character')) return;
+  if (!requireUser(main, 'create a character') || !requireGroup(main)) return;
   // Arriving from a class page (#/characters/new?class=Druid) pre-selects that class.
   const startClass = (findClass(query.get('class')) || findClass('Wizard') || CLASSES[0]).name;
 

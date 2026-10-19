@@ -149,7 +149,7 @@ To move a subclass to a different parent, edit it and change **Parent class**.
 ## NPCs & Enemies (DM only)
 
 DM page > **NPCs & Enemies**. This list is **never sent to players**: the
-server only answers DM accounts, and `data/npcs.js` is outside the public
+server only answers the group's DMs, and `data/npcs.js` is outside the public
 folder. There is no Hide / Publish button because nothing here is ever public.
 
 **View** opens a 2024-style stat block; **Edit** opens the form. The form

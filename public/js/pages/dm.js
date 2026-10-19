@@ -1,11 +1,12 @@
 /**
- * pages/dm.js - DM tools (#/dm). Only visible to accounts with the DM role.
+ * pages/dm.js - DM tools (#/dm). Only visible to the DMs of the group being
+ * shown; everything here belongs to that group alone.
  *
  *   Spells / Items / Classes   add, edit and remove entries without touching code
  *   Initiative Tracker         run encounters: turn order, HP, Guard (see pages/initiative.js)
  *   NPCs & Enemies             your private roster of stat blocks - never shown to players
  *   Characters                 open (and edit) any player's sheet
- *   Players                    promote a player to DM, or set a new password for them
+ *   Group                      the invite code, the group's name, its members (make DM, remove)
  *   Session notes / Lore       private notebooks, saved as you type
  *
  * Entries saved here go to the database. Entries from the data/ files are
@@ -22,7 +23,7 @@
  *  Field types: text, number, select, textarea, bool (tick box),
  *               checks (several tick boxes), list (comma separated), lines.
  */
-import { api, state, isDM, loadSpells, loadItems, loadClasses, loadComponents, loadSubclasses } from '../api.js';
+import { api, state, isDM, loadUser, loadSpells, loadItems, loadClasses, loadComponents, loadSubclasses } from '../api.js';
 import { reloadPage, replaceQuery } from '../nav.js';
 import { esc, icon, openDialog, confirmDialog, optionTags, toast, debounce } from '../ui.js';
 import { SCHOOLS, CLASS_NAMES, ANY_CLASS, FORMS, ROMAN, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '../rules/constants.js';
@@ -33,7 +34,7 @@ import { initiativeTab } from './initiative.js';
 const TABS = [
   ['initiative', 'Initiative Tracker'],
   ['spells', 'Spells'], ['items', 'Items & Weapons'], ['classes', 'Classes'], ['npcs', 'NPCs & Enemies'],
-  ['characters', 'Characters'], ['players', 'Players'], ['notes', 'Session notes'], ['lore', 'Lore'],
+  ['characters', 'Characters'], ['players', 'Group'], ['notes', 'Session notes'], ['lore', 'Lore'],
 ];
 let tab = 'spells';
 // Some tabs hold more than one list, chosen with the buttons at the top of the tab.
@@ -233,14 +234,14 @@ const CATALOG = {
 
 export async function render(main, { query }) {
   if (!isDM()) {
-    main.innerHTML = `<div class="empty">${icon('crown')}<h2>DM tools</h2><p>This page is for the Dungeon Master's account.</p><a class="btn primary" href="#/">Back to home</a></div>`;
+    main.innerHTML = `<div class="empty">${icon('crown')}<h2>DM tools</h2><p>This page is for the DM of ${state.group ? `${esc(state.group.name)}. Switch groups with the button at the top` : 'a group. Start your own group under Account settings'}.</p><a class="btn primary" href="#/">Back to home</a></div>`;
     return;
   }
   if (TABS.some(([id]) => id === query.get('tab'))) tab = query.get('tab');
   if (GROUPS[tab]?.some(([id]) => id === query.get('list'))) chosen[tab] = query.get('list');
   const address = () => (GROUPS[tab] ? { tab, list: chosen[tab] } : { tab });
   main.innerHTML = `
-    <div class="page-head"><p class="kicker">Dungeon Master</p><h1>DM tools</h1><hr class="rule"></div>
+    <div class="page-head"><p class="kicker">Dungeon Master · ${esc(state.group.name)}</p><h1>DM tools</h1><hr class="rule"></div>
     <div class="tabs" role="tablist" aria-label="DM tools">
       ${TABS.map(([id, label]) => `<button role="tab" data-tab="${id}" aria-selected="${id === tab}">${label}</button>`).join('')}
     </div>
@@ -421,45 +422,61 @@ async function charactersTab(body) {
     : `<div class="empty">${icon('users')}<h2>No characters yet</h2><p>They will appear here as your players create them.</p></div>`;
 }
 
-// ── Players ──────────────────────────────────────────────────────────────────
+// ── Group: invite code, name, members ────────────────────────────────────────
 async function playersTab(body) {
-  const { users } = await api('GET', '/users');
+  const { members } = await api('GET', '/group/members');
+  const g = state.group;
   body.innerHTML = `
-    <p class="small muted">The first account created is the DM. Players sign up themselves on the Sign in page.</p>
+    <div class="grid cols-2">
+      <section class="card stack">
+        <h3>Invite code</h3>
+        <p class="small muted">Give this to your players. They enter it when they create an account, or under Account settings if they already have one.</p>
+        <div class="row"><code class="invite-code">${esc(g.inviteCode)}</code>
+          <button class="btn sm" id="copy-code">${icon('copy')}Copy</button>
+          <button class="btn sm ghost" id="new-code">${icon('refresh')}New code</button></div>
+      </section>
+      <section class="card stack">
+        <h3>Group name</h3>
+        <form class="inline-form" id="rename"><input name="name" maxlength="60" value="${esc(g.name)}" aria-label="Group name"><button class="btn" type="submit">Rename</button></form>
+      </section>
+    </div>
+    <h3 class="gap-above">Members</h3>
     <div class="table-wrap"><table>
       <thead><tr><th>Player</th><th>Username</th><th>Role</th><th class="c">Characters</th><th>Actions</th></tr></thead>
-      <tbody>${users.map((u) => `<tr>
+      <tbody>${members.map((u) => `<tr>
         <td><b>${esc(u.displayName)}</b>${u.id === state.user.id ? ' (you)' : ''}</td><td>${esc(u.username)}</td>
         <td><span class="badge ${u.role === 'dm' ? 'gold' : ''}">${u.role === 'dm' ? 'DM' : 'Player'}</span></td><td class="c">${u.characters}</td>
         <td><div class="row">${u.id === state.user.id ? '' : `
           <button class="btn sm" data-role="${u.role === 'dm' ? 'player' : 'dm'}" data-id="${u.id}" data-name="${esc(u.displayName)}">${u.role === 'dm' ? 'Make player' : 'Make DM'}</button>
-          <button class="btn sm" data-pw="${u.id}" data-name="${esc(u.displayName)}">Set password</button>`}</div></td></tr>`).join('')}</tbody></table></div>`;
+          <button class="btn sm ghost" data-remove="${u.id}" data-name="${esc(u.displayName)}">Remove</button>`}</div></td></tr>`).join('')}</tbody></table></div>
+    <p class="small muted">Forgot a password? The site admin can set a new one${state.user.isAdmin ? ' (that is you: see Account settings)' : ''}.</p>`;
+
+  const refreshGroups = async () => { await loadUser(); reloadPage(); };
+  body.querySelector('#copy-code').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(g.inviteCode); toast('Invite code copied.'); } catch { toast('Could not copy. Select the code and copy it by hand.', 'error'); }
+  });
+  body.querySelector('#rename').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await api('PUT', '/group', { name: e.target.name.value }); toast('Group renamed.'); await refreshGroups(); } catch (err) { toast(err.message, 'error'); }
+  });
 
   body.addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
-    if (btn.dataset.role) {
-      const ok = await confirmDialog({ title: 'Change role?', message: `${btn.dataset.name} will become a ${btn.dataset.role === 'dm' ? 'DM (can edit spells, notes and every character)' : 'player'}.`, confirmLabel: 'Change role' });
+    if (btn.id === 'new-code') {
+      const ok = await confirmDialog({ title: 'Make a new invite code?', message: 'The current code stops working. People already in the group stay in.', confirmLabel: 'New code' });
       if (!ok) return;
-      try { await api('PUT', `/users/${btn.dataset.id}/role`, { role: btn.dataset.role }); reloadPage(); } catch (err) { toast(err.message, 'error'); }
+      try { await api('POST', '/group/invite-code'); toast('New invite code made.'); await refreshGroups(); } catch (err) { toast(err.message, 'error'); }
     }
-    if (btn.dataset.pw) {
-      const dlg = openDialog({
-        title: `New password for ${esc(btn.dataset.name)}`, narrow: true,
-        body: `<p>Set a temporary password and tell them in person. They are signed out everywhere and can change it under Account settings.</p>
-          <div class="field"><label for="temp-pw">Temporary password</label><input id="temp-pw" type="text" autocomplete="off" minlength="8"><span class="hint">At least 8 characters.</span><span class="error" id="temp-err" hidden></span></div>`,
-        footer: `<button class="btn" data-close>Cancel</button><button class="btn primary" id="temp-save">Set password</button>`,
-      });
-      dlg.querySelector('#temp-save').addEventListener('click', async () => {
-        try {
-          await api('PUT', `/users/${btn.dataset.pw}/password`, { password: dlg.querySelector('#temp-pw').value });
-          dlg.close();
-          toast('Password updated.');
-        } catch (err) {
-          const box = dlg.querySelector('#temp-err');
-          box.textContent = err.message; box.hidden = false;
-        }
-      });
+    if (btn.dataset.role) {
+      const ok = await confirmDialog({ title: 'Change role?', message: `${btn.dataset.name} will become a ${btn.dataset.role === 'dm' ? 'DM of this group (can edit its homebrew, notes and every character in it)' : 'player'}.`, confirmLabel: 'Change role' });
+      if (!ok) return;
+      try { await api('PUT', `/group/members/${btn.dataset.id}/role`, { role: btn.dataset.role }); reloadPage(); } catch (err) { toast(err.message, 'error'); }
+    }
+    if (btn.dataset.remove) {
+      const ok = await confirmDialog({ title: 'Remove from group?', message: `${btn.dataset.name} will leave this group. Their account and characters are kept; they can rejoin with the invite code.`, confirmLabel: 'Remove', danger: true });
+      if (!ok) return;
+      try { await api('DELETE', `/group/members/${btn.dataset.remove}`); toast('Removed.'); reloadPage(); } catch (err) { toast(err.message, 'error'); }
     }
   });
 }
