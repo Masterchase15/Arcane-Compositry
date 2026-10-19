@@ -72,7 +72,7 @@ edit any class to add as much detail as you want.
 
 ### Add a custom class on the DM page
 
-DM page > **Classes** > **New class**. The form asks for:
+Your campaign (as DM) > **Classes** > **New class**. The form asks for:
 
 - **Name**, **Hit Die**, the **two saving throws**, and how many skills it picks.
 - **Invocation ability** - the ability used for Arcane attacks and Save DC.
@@ -126,7 +126,7 @@ note.
 
 ### Add a custom subclass
 
-DM page > **Classes** > **Subclasses** > **New subclass**:
+Your campaign (as DM) > **Classes** > **Subclasses** > **New subclass**:
 
 - **Name** and **Parent class** (any class, including your custom ones).
 - **Description**.
@@ -148,7 +148,7 @@ To move a subclass to a different parent, edit it and change **Parent class**.
 
 ## NPCs & Enemies (DM only)
 
-DM page > **NPCs & Enemies**. This list is **never sent to players**: the
+Your campaign (as DM) > **NPCs & Enemies**. This list is **never sent to players**: the
 server only answers the group's DMs, and `data/npcs.js` is outside the public
 folder. There is no Hide / Publish button because nothing here is ever public.
 

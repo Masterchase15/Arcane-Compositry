@@ -1,19 +1,32 @@
 /**
  * api.js - how the pages talk to the server (see server/api.js for the other side).
  *
- * Also holds the tiny bit of shared state: who is signed in, which group
- * (campaign) they are looking at, and the spell lists.
+ * Also holds the tiny bit of shared state: who is signed in, their campaigns,
+ * and the spell lists.
  *
- * Every request carries ?group=<id> of the current group, so the server knows
- * whose characters, notes and DM-page edits to use. `state.user.role` is the
- * user's role in that group ('dm' or 'player'), so isDM() means "DM of this group".
+ * ─── CAMPAIGNS ("groups" in the code) ───────────────────────────────────────
+ *  The site has two modes, and the page you are on decides which:
+ *   - BROWSING (every page except #/campaign/...): the standard rules. The
+ *     spell, item and class lists may also include one campaign's homebrew if
+ *     you pick it in the "Homebrew" filter (state.homebrew, remembered).
+ *   - INSIDE A CAMPAIGN (#/campaign/<id>): that campaign's hub, with a banner.
+ *  `state.group` is the campaign the current page is using (null = standard
+ *  rules only). app.js sets it before each page is drawn; the character sheet
+ *  switches it to the character's campaign. Every request carries
+ *  ?group=<id> of it, so the server knows whose homebrew, notes and party to
+ *  use. `state.user.role` is the user's role there, so isDM() means "DM of
+ *  the campaign this page is using".
  */
 import { setClasses, setComponents } from './rules/constants.js';
 
-/** Sends a request to /api/... and returns the JSON answer. Throws an Error with .fields on failure. */
-export async function api(method, path, body) {
+/**
+ * Sends a request to /api/... and returns the JSON answer. Throws an Error with .fields on failure.
+ * options.group: send this campaign id instead of the current one (null = none).
+ */
+export async function api(method, path, body, options = {}) {
   let response;
-  const url = state.group ? `/api${path}${path.includes('?') ? '&' : '?'}group=${encodeURIComponent(state.group.id)}` : `/api${path}`;
+  const groupId = 'group' in options ? options.group : state.group?.id;
+  const url = groupId ? `/api${path}${path.includes('?') ? '&' : '?'}group=${encodeURIComponent(groupId)}` : `/api${path}`;
   try {
     response = await fetch(url, {
       method,
@@ -32,40 +45,59 @@ export async function api(method, path, body) {
 }
 
 /**
- * Shared state. `user` is null when signed out. `groups` = every group the user
- * is in; `group` = the one being shown (null if none). `inviteRequired` = sign-up
- * needs an invite code.
+ * Shared state. `user` is null when signed out. `groups` = every campaign the
+ * user is in. `group` = the campaign the current page is using (see above).
+ * `homebrew` = the campaign id picked in the browsing pages' Homebrew filter.
+ * `inviteRequired` = sign-up needs an invite code.
  */
-export const state = { user: null, groups: [], group: null, inviteRequired: false, spells: null, items: null, classes: null, components: null, subclasses: null };
+export const state = { user: null, groups: [], group: null, homebrew: null, inviteRequired: false, spells: null, items: null, classes: null, components: null, subclasses: null };
 
-const GROUP_KEY = 'ac-group';
+const HOMEBREW_KEY = 'ac-homebrew';
 const remember = {
-  get() { try { return localStorage.getItem(GROUP_KEY); } catch { return null; } },
-  set(id) { try { if (id) localStorage.setItem(GROUP_KEY, id); else localStorage.removeItem(GROUP_KEY); } catch { /* private mode: ignore */ } },
+  get() { try { return localStorage.getItem(HOMEBREW_KEY); } catch { return null; } },
+  set(id) { try { if (id) localStorage.setItem(HOMEBREW_KEY, id); else localStorage.removeItem(HOMEBREW_KEY); } catch { /* private mode: ignore */ } },
 };
 
-/** Loads who is signed in and their groups, and picks the group to show (the last one used, else the first). */
+/** Loads who is signed in and their campaigns. */
 export async function loadUser() {
   try {
-    const me = await api('GET', '/auth/me');
+    const me = await api('GET', '/auth/me', undefined, { group: null });
     state.user = me.user;
     state.groups = me.groups || [];
     state.inviteRequired = !!me.inviteRequired;
   } catch { state.user = null; state.groups = []; }
-  pickGroup(remember.get());
+  // Forget a Homebrew choice for a campaign you are no longer in.
+  state.homebrew = state.groups.some((g) => g.id === remember.get()) ? remember.get() : null;
+  if (state.group) state.group = state.groups.find((g) => g.id === state.group.id) || null;
+  if (state.user) state.user.role = state.group?.role || 'player';
   return state.user;
 }
 
-function pickGroup(id) {
-  state.group = state.groups.find((g) => g.id === id) || state.groups[0] || null;
-  if (state.user) state.user.role = state.group?.role || 'player';
-  if (state.group) remember.set(state.group.id);
+export const findGroup = (id) => state.groups.find((g) => g.id === id) || null;
+
+/**
+ * Makes the current page use this campaign (or none: null). When that changes,
+ * the cached lists are fetched again, since each campaign has its own homebrew.
+ */
+export async function useGroup(id) {
+  const next = findGroup(id);
+  if (state.user) state.user.role = next?.role || 'player';
+  if (next?.id === state.group?.id) { state.group = next; return; }
+  state.group = next;
+  await refreshCatalog();
 }
 
-/** Switches to another group, then re-fetches the lists (each group has its own edits and hidden entries). */
-export async function setGroup(id) {
-  pickGroup(id);
-  await refreshCatalog();
+/** The browsing pages' Homebrew filter: include this campaign's homebrew (null = standard rules only). */
+export async function setHomebrew(id) {
+  state.homebrew = findGroup(id)?.id || null;
+  remember.set(state.homebrew);
+  await useGroup(state.homebrew);
+}
+
+/** Address of a campaign's hub page, e.g. campaignHref('abc', { tab: 'items' }) -> '#/campaign/abc?tab=items'. */
+export function campaignHref(id = state.group?.id, params = {}) {
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== '')).toString();
+  return `#/campaign/${id}${qs ? `?${qs}` : ''}`;
 }
 
 /** Spell lists are fetched once and reused; pass true to force a fresh copy (after a DM edit). */

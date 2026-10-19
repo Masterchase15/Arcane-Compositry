@@ -175,6 +175,7 @@ function leaveGroup({ user, params }) {
     throw fail(400, 'You are the only DM. Make another member DM before you leave.');
   }
   db.prepare('DELETE FROM memberships WHERE group_id = ? AND user_id = ?').run(params.id, user.id);
+  db.prepare('UPDATE characters SET group_id = NULL WHERE group_id = ? AND user_id = ?').run(params.id, user.id);
   return { ok: true, deleted: false };
 }
 
@@ -213,12 +214,13 @@ function setMemberRole({ user, group, params, body }) {
   return { ok: true };
 }
 
-/** Takes someone out of the group. Their characters stay theirs, but the group's DMs no longer see them in the list. */
+/** Takes someone out of the group. Their characters stay theirs, outside the campaign. */
 function removeMember({ user, group, params }) {
-  if (params.id === user.id) throw fail(400, 'To leave the group yourself, use Account settings.');
+  if (params.id === user.id) throw fail(400, 'To leave the campaign yourself, use the Campaigns page.');
   if (!db.prepare('DELETE FROM memberships WHERE group_id = ? AND user_id = ?').run(group.id, params.id).changes) {
     throw fail(404, 'That person is not in this group.');
   }
+  db.prepare('UPDATE characters SET group_id = NULL WHERE group_id = ? AND user_id = ?').run(group.id, params.id);
   return { ok: true };
 }
 
@@ -343,28 +345,47 @@ function deleteEncounter({ group, params }) {
 }
 
 // ── Characters ───────────────────────────────────────────────────────────────
+// A character belongs to its owner. It can also be in ONE campaign (group_id),
+// where the campaign's DMs can open and edit it and the party can see it listed.
+const CHAR_SELECT = `SELECT c.*, u.display_name AS owner_name, g.name AS group_name
+  FROM characters c JOIN users u ON u.id = c.user_id LEFT JOIN groups g ON g.id = c.group_id`;
+
 const charSummary = (r) => {
   const d = JSON.parse(r.data);
   return {
     id: r.id, name: r.name, updatedAt: r.updated_at,
     ownerId: r.user_id, ownerName: r.owner_name,
+    groupId: r.group_id || null, groupName: r.group_name || '',
     className: d.identity?.className || '', subclass: d.identity?.subclass || '',
     level: d.identity?.level || 1, species: d.identity?.species || '',
   };
 };
 
-/** Your characters in the current group; with ?all=1 a DM gets every member's. Not in a group: none. */
-function listCharacters({ user, group, query }) {
-  if (!group) return { characters: [] };
-  const all = query.get('all') === '1' && group.role === 'dm';
-  const rows = db
-    .prepare(
-      `SELECT c.*, u.display_name AS owner_name FROM characters c JOIN users u ON u.id = c.user_id
-        WHERE c.group_id = ? ${all ? 'AND c.user_id IN (SELECT user_id FROM memberships WHERE group_id = c.group_id)' : 'AND c.user_id = ?'}
-        ORDER BY c.updated_at DESC`
-    )
-    .all(...(all ? [group.id] : [group.id, user.id]));
+/** All your characters, in a campaign or not. */
+function listCharacters({ user }) {
+  const rows = db.prepare(`${CHAR_SELECT} WHERE c.user_id = ? ORDER BY c.updated_at DESC`).all(user.id);
   return { characters: rows.map(charSummary) };
+}
+
+/** The party: every member's characters in the current campaign. Anyone in it may see the list. */
+function listPartyCharacters({ group }) {
+  const rows = db
+    .prepare(`${CHAR_SELECT} WHERE c.group_id = ? AND c.user_id IN (SELECT user_id FROM memberships WHERE group_id = c.group_id) ORDER BY u.display_name COLLATE NOCASE, c.name`)
+    .all(group.id);
+  return { characters: rows.map(charSummary) };
+}
+
+/** Is this user in that group? Returns their role, or undefined. */
+const roleIn = (groupId, userId) => db.prepare('SELECT role FROM memberships WHERE group_id = ? AND user_id = ?').get(groupId, userId)?.role;
+
+/** The owner puts a character into one of their campaigns, moves it, or (groupId: null) takes it out. */
+function setCharacterCampaign({ user, params, body }) {
+  const row = db.prepare('SELECT user_id FROM characters WHERE id = ?').get(params.id);
+  if (!row || row.user_id !== user.id) throw fail(404, 'Character not found.');
+  const groupId = body.groupId || null;
+  if (groupId && !roleIn(groupId, user.id)) throw fail(403, 'You are not in that campaign.');
+  db.prepare('UPDATE characters SET group_id = ? WHERE id = ?').run(groupId, params.id);
+  return { ok: true, groupId };
 }
 
 /**
@@ -373,11 +394,10 @@ function listCharacters({ user, group, query }) {
  */
 function loadCharacter(user, id) {
   const row = db
-    .prepare('SELECT c.*, u.display_name AS owner_name FROM characters c JOIN users u ON u.id = c.user_id WHERE c.id = ?')
+    .prepare(`${CHAR_SELECT} WHERE c.id = ?`)
     .get(id);
   if (row && row.user_id === user.id) return row;
-  const roleIn = (uid) => db.prepare('SELECT role FROM memberships WHERE group_id = ? AND user_id = ?').get(row.group_id, uid)?.role;
-  if (!row || !row.group_id || roleIn(user.id) !== 'dm' || !roleIn(row.user_id)) throw fail(404, 'Character not found.');
+  if (!row || !row.group_id || roleIn(row.group_id, user.id) !== 'dm' || !roleIn(row.group_id, row.user_id)) throw fail(404, 'Character not found.');
   return row;
 }
 
@@ -387,18 +407,20 @@ function cleanCharacterData(data) {
   return { name, json: JSON.stringify(data) };
 }
 
-function createCharacter({ user, group, body }) {
+/** A new character, optionally straight into one of your campaigns (body.groupId). */
+function createCharacter({ user, body }) {
   const { name, json } = cleanCharacterData(body.data);
+  const groupId = body.groupId && roleIn(body.groupId, user.id) ? body.groupId : null;
   const id = crypto.randomUUID();
   db.prepare('INSERT INTO characters (id, user_id, group_id, name, data, updated_at) VALUES (?,?,?,?,?,?)').run(
-    id, user.id, group.id, name, json, new Date().toISOString()
+    id, user.id, groupId, name, json, new Date().toISOString()
   );
   return { id };
 }
 
 function getCharacter({ user, params }) {
   const row = loadCharacter(user, params.id);
-  return { id: row.id, ownerId: row.user_id, ownerName: row.owner_name, groupId: row.group_id, updatedAt: row.updated_at, data: JSON.parse(row.data) };
+  return { id: row.id, ownerId: row.user_id, ownerName: row.owner_name, groupId: row.group_id || null, groupName: row.group_name || '', updatedAt: row.updated_at, data: JSON.parse(row.data) };
 }
 
 function updateCharacter({ user, params, body }) {
@@ -486,7 +508,9 @@ const ROUTES = [
   ['DELETE', '/api/notes/:id',               'dm',     deleteNote],
 
   ['GET',    '/api/characters',              'user',   listCharacters],
-  ['POST',   '/api/characters',              'member', createCharacter],
+  ['GET',    '/api/group/characters',        'member', listPartyCharacters],
+  ['POST',   '/api/characters',              'user',   createCharacter],
+  ['PUT',    '/api/characters/:id/campaign', 'user',   setCharacterCampaign],
   ['GET',    '/api/characters/:id',          'user',   getCharacter],
   ['PUT',    '/api/characters/:id',          'user',   updateCharacter],
   ['DELETE', '/api/characters/:id',          'user',   deleteCharacter],

@@ -7,7 +7,7 @@
  *
  * The Components themselves come from data/components.js and the DM page.
  */
-import { api, loadComponents, state, isDM } from '../api.js';
+import { api, loadComponents, state, isDM, campaignHref } from '../api.js';
 import { replaceQuery } from '../nav.js';
 import { esc, icon, openDialog, optionTags, toast, debounce } from '../ui.js';
 import { COMPONENT_KINDS } from '../rules/constants.js';
@@ -42,13 +42,13 @@ export async function render(main, { query }) {
       <div class="field"><label for="kind">Kind</label>
         <select id="kind"><option value="">Physical and Aspectual</option>${optionTags(COMPONENT_KINDS, f.kind)}</select></div>
       ${characters.length ? `<div class="field"><label for="char">Check against my character</label>
-        <select id="char"><option value="">No character selected</option>${optionTags(characters.map((c) => ({ value: c.id, label: c.name })), f.char)}</select></div>` : '<span></span>'}
+        <select id="char"><option value="">No character selected</option>${optionTags(characters.map((c) => ({ value: c.id, label: c.groupName ? `${c.name} (${c.groupName})` : c.name })), f.char)}</select></div>` : '<span></span>'}
     </form>
     <div class="row between">
       <p class="muted" id="count" role="status" aria-live="polite"></p>
       <div class="row">
         <button class="btn sm ghost" id="clear" type="button">Clear filters</button>
-        ${isDM() ? `<a class="btn sm" href="#/dm?tab=spells&list=components">${icon('plus')}Add a Component</a>` : ''}
+        ${isDM() ? `<a class="btn sm" href="${campaignHref()}?tab=spells&list=components">${icon('plus')}Add a Component</a>` : ''}
       </div>
     </div>
     <div class="spell-list" id="list"></div>`;

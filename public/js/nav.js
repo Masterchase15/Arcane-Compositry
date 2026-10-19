@@ -1,7 +1,7 @@
 /**
  * nav.js - small navigation helpers shared by the pages.
  */
-import { state } from './api.js';
+import { state, setHomebrew, campaignHref } from './api.js';
 import { esc, icon } from './ui.js';
 
 /** The part of the address after the #, split into path and ?query. */
@@ -26,15 +26,29 @@ export function requireUser(main, what) {
 }
 
 /**
- * For pages that need a group (characters belong to one). Shows a "join or
- * create a group" message and returns false when the user is not in any.
+ * The Homebrew filter at the top of the spell, item, class and Spellcrafter
+ * pages: show the standard rules only, or include one of your campaigns'
+ * homebrew. Only shown to people in at least one campaign.
  */
-export function requireGroup(main) {
-  if (state.group) return true;
-  main.innerHTML = `<div class="empty">${icon('users')}<h2>Join a group first</h2>
-    <p>Characters belong to a campaign group. Ask your DM for their group's invite code, or start your own group.</p>
-    <a class="btn primary" href="#/account">Join or create a group</a></div>`;
-  return false;
+export function homebrewBar(main) {
+  if (!state.user || !state.groups.length) return;
+  const g = state.group;
+  const bar = document.createElement('div');
+  bar.className = `homebrew-bar${g ? ' active' : ''}`;
+  bar.innerHTML = `
+    <label for="homebrew-select">${icon('flag')}Homebrew</label>
+    <select id="homebrew-select">
+      <option value="">Standard rules only</option>
+      ${state.groups.map((x) => `<option value="${x.id}"${x.id === g?.id ? ' selected' : ''}>Include ${esc(x.name)}</option>`).join('')}
+    </select>
+    ${g ? `<span class="small">${g.role === 'dm' ? 'You are the DM: hidden entries are shown and marked.' : `Showing ${esc(g.name)}'s homebrew too.`}
+      <a href="${campaignHref(g.id)}">Open campaign</a></span>` : ''}`;
+  bar.querySelector('select').addEventListener('change', async (e) => {
+    await setHomebrew(e.target.value || null);
+    reloadPage();
+  });
+  const head = main.querySelector('.page-head');
+  if (head) head.after(bar); else main.prepend(bar);
 }
 
 /** Redraws the current page from scratch (after deleting something, for example). */

@@ -3,8 +3,8 @@
  * It collects the basics, lets rules/character.js fill in everything that can
  * be calculated, saves the sheet and opens it.
  */
-import { api, state } from '../api.js';
-import { requireUser, requireGroup } from '../nav.js';
+import { api, state, useGroup, findGroup } from '../api.js';
+import { requireUser } from '../nav.js';
 import { esc, icon, optionTags, toast } from '../ui.js';
 import { ABILITIES, CLASSES, findClass } from '../rules/constants.js';
 import * as F from '../rules/formulas.js';
@@ -24,8 +24,11 @@ function suggestedScores(className) {
 }
 const ALIGNMENTS = ['', 'Lawful Good', 'Neutral Good', 'Chaotic Good', 'Lawful Neutral', 'Neutral', 'Chaotic Neutral', 'Lawful Evil', 'Neutral Evil', 'Chaotic Evil'];
 
-export function render(main, { query }) {
-  if (!requireUser(main, 'create a character') || !requireGroup(main)) return;
+export async function render(main, { query }) {
+  if (!requireUser(main, 'create a character')) return;
+  // #/characters/new?campaign=<id> makes it for that campaign, with its homebrew classes.
+  const campaign = findGroup(query.get('campaign'));
+  if (campaign) await useGroup(campaign.id);
   // Arriving from a class page (#/characters/new?class=Druid) pre-selects that class.
   const startClass = (findClass(query.get('class')) || findClass('Wizard') || CLASSES[0]).name;
 
@@ -39,6 +42,9 @@ export function render(main, { query }) {
     <form class="craft" novalidate>
       <div class="stack">
         <section class="panel"><header><h3>Who are they?</h3></header><div class="panel-body fields wide">
+          ${state.groups.length ? `<div class="field span-all"><label for="campaign">Campaign</label>
+            <select id="campaign">${optionTags([{ value: '', label: 'No campaign (add it to one later)' }, ...state.groups.map((g) => ({ value: g.id, label: g.name }))], campaign?.id || '')}</select>
+            <span class="hint">In a campaign, its DM can see the sheet and its homebrew classes are offered below.</span></div>` : ''}
           <div class="field span-all"><label for="name">Character name <span aria-hidden="true">*</span></label><input id="name" name="name" required maxlength="80" autocomplete="off"><span class="error" id="err-name" hidden>Give your character a name.</span></div>
           <div class="field"><label for="className">Class <span aria-hidden="true">*</span></label><select id="className" name="className">${optionTags(CLASSES.map((c) => c.name), startClass)}</select><span class="hint" id="class-hint"></span><a class="small" href="#/classes">Compare the classes</a></div>
           <div class="field"><label for="level">Level</label><input id="level" name="level" type="number" inputmode="numeric" min="1" max="20" value="1"></div>
@@ -130,13 +136,17 @@ export function render(main, { query }) {
     const button = form.querySelector('[type=submit]');
     button.disabled = true;
     try {
-      const { id } = await api('POST', '/characters', { data: characterFromBasics(basics) });
+      const { id } = await api('POST', '/characters', { data: characterFromBasics(basics), groupId: campaign?.id || null });
       toast(`${basics.name} created.`);
       location.hash = `#/characters/${id}`;
     } catch (err) {
       toast(err.message, 'error');
       button.disabled = false;
     }
+  });
+  // Changing the campaign redraws the form with that campaign's classes.
+  main.querySelector('#campaign')?.addEventListener('change', (e) => {
+    location.hash = `#/characters/new${e.target.value ? `?campaign=${e.target.value}` : ''}`;
   });
   preview();
 }

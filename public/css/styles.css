@@ -118,11 +118,21 @@ small, .small { font-size: .875rem; }
 .nav-links a:hover { background: var(--surface-2); color: var(--ink); }
 .nav-links a[aria-current='page'] { color: var(--primary); background: var(--sage); }
 .topbar-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-/* The current group's name in the top bar: shortened when long, icon only on small phones. */
-.group-name { max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar-actions .btn span { white-space: nowrap; }
-@media (max-width: 760px) { .group-name { max-width: 9ch; } }
-@media (max-width: 480px) { .group-name { display: none; } }
+
+/* Campaign banner: only inside a campaign hub (#/campaign/...), so you always know whether you are in one. */
+.campaign-bar { position: sticky; top: var(--nav-h); z-index: 39; background: var(--gold-soft); border-bottom: 2px solid var(--gold); }
+.campaign-bar-inner { max-width: 1160px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.campaign-bar-label { display: flex; align-items: center; gap: 10px; color: var(--ink); }
+.campaign-bar-label > .icon { color: var(--gold-ink); width: 22px; height: 22px; }
+.campaign-bar-label .kicker { display: block; margin: 0; }
+.campaign-bar-label b { font-size: 1.05rem; }
+
+/* Homebrew filter on the browsing lists: standard rules, or include a campaign's homebrew. */
+.homebrew-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 20px; padding: 10px 14px; border: 1px dashed var(--line); border-radius: 10px; }
+.homebrew-bar label { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.homebrew-bar select { width: auto; min-width: 200px; }
+.homebrew-bar.active { border: 1px solid var(--gold-line); background: var(--gold-soft); }
 
 .tabbar {
   display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;

@@ -10,8 +10,9 @@ And two ways to add to either list. Use whichever you like; they combine.
 
 ## Way 1 - the DM page (no code)
 
-1. Sign in, pick your group with the button at the top (you must be its DM), and open **DM** in the menu.
-   Everything you add or change there applies to that group only.
+1. Sign in, open **Campaigns** and enter your campaign (you must be its DM), then the **Spells** tab.
+   Everything you add or change there applies to that campaign only. (Made a spell in the
+   Spellcrafter? Its **Save to campaign homebrew** button adds it to the Compositry list.)
 2. On the **Spells** tab choose *Codified* or *Compositry*, then **New spell**.
 3. Fill in the form and tick the classes that may learn it. Save.
 
@@ -94,7 +95,7 @@ players earn them.
 ## Physical & Aspectual Components
 
 The third tab on the Spells page lists the Components that Compositions are
-built from. They are added like spells: DM page > Spells > **Physical &
+built from. They are added like spells: Your campaign (as DM) > Spells > **Physical &
 Aspectual**, or `data/components.js`.
 
 | Field          | Rule                                                        |

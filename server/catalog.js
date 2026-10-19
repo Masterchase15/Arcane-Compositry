@@ -32,7 +32,7 @@
  * ─── TO ADD A NEW FIELD TO A LIST ──────────────────────────────────────────
  *  Add it to that list's validate function below (so it is kept when saved),
  *  then show it on the list's page and add it to the DM form in
- *  public/js/pages/dm.js.
+ *  public/js/pages/campaign.js.
  */
 import fs from 'node:fs';
 import path from 'node:path';

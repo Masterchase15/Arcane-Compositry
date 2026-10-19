@@ -1,9 +1,9 @@
 /**
  * pages/account.js - sign in, create an account (#/account). Once signed in:
- * your groups (create, join, leave), change password, and - for the site
- * admin - every account on the site, with "Set password" for anyone locked out.
+ * change password, and - for the site admin - every account on the site, with
+ * "Set password" for anyone locked out. Campaigns are on pages/campaigns.js.
  */
-import { api, state, loadUser, setGroup, refreshCatalog } from '../api.js';
+import { api, state, loadUser, refreshCatalog, campaignHref } from '../api.js';
 import { reloadPage } from '../nav.js';
 import { esc, icon, toast, openDialog, confirmDialog } from '../ui.js';
 
@@ -46,7 +46,7 @@ export function render(main, { query }) {
             ${creating ? `<div class="field">
               <label for="inviteCode">Invite code${state.inviteRequired ? ' <span aria-hidden="true">*</span>' : ''}</label>
               <input id="inviteCode" name="inviteCode" autocomplete="off" autocapitalize="characters" spellcheck="false"${state.inviteRequired ? ' required' : ''} value="${esc(keep.inviteCode || '')}"${attrs('inviteCode')}>
-              <span class="hint">${state.inviteRequired ? 'Your DM gives this to their players. It also adds you to their group.' : "Optional. Your DM's group code adds you to their group straight away."}</span>${err('inviteCode')}
+              <span class="hint">${state.inviteRequired ? 'Your DM gives this to their players. It also adds you to their campaign.' : "Optional. Your DM's campaign invite code adds you to their campaign straight away."}</span>${err('inviteCode')}
             </div>` : ''}
             <button class="btn primary" type="submit">${creating ? 'Create account' : 'Sign in'}</button>
           </form>
@@ -79,11 +79,10 @@ export function render(main, { query }) {
       try {
         const { joinedGroup } = await api('POST', `/auth/${creating ? 'register' : 'login'}`, body);
         await loadUser();
-        await setGroup(joinedGroup || state.group?.id);
+        await refreshCatalog();
         toast(creating ? `Welcome, ${state.user.displayName}!` : 'Signed in.');
-        // Not in any group yet: stay here, where groups are created and joined.
-        if (!state.group) return reloadPage();
-        location.hash = `#${next.startsWith('/') ? next : '/characters'}`;
+        // An invite code took them into a campaign: go straight to it.
+        location.hash = joinedGroup ? campaignHref(joinedGroup) : `#${next.startsWith('/') ? next : '/characters'}`;
       } catch (error) {
         draw(error.fields || {}, error.message);
         // Send keyboard and screen-reader users straight to the problem.
@@ -98,32 +97,18 @@ export function render(main, { query }) {
 
 function renderProfile(main) {
   const u = state.user;
-  const roleLabel = (g) => (g.role === 'dm' ? '<span class="badge gold">DM</span>' : '<span class="badge">Player</span>');
   main.innerHTML = `
     <div class="page-head"><p class="kicker">Account</p><h1>${esc(u.displayName)}</h1><hr class="rule"></div>
     <div class="grid cols-2">
-      <section class="card stack" id="groups">
-        <h2>Your groups</h2>
-        <p class="small muted">Each group is one campaign, with its own DM, characters and homebrew. ${u.isAdmin ? 'You are also the <b>site admin</b>.' : ''}</p>
-        ${state.groups.length
-          ? `<div class="table-wrap"><table>
-              <tbody>${state.groups.map((g) => `<tr>
-                <td><b>${esc(g.name)}</b> ${roleLabel(g)}${g.id === state.group?.id ? ' <span class="small muted">(showing)</span>' : ''}</td>
-                <td><div class="row end">
-                  ${g.id === state.group?.id ? '' : `<button class="btn sm" data-show="${g.id}">Show</button>`}
-                  <button class="btn sm ghost" data-leave="${g.id}" data-name="${esc(g.name)}">Leave</button>
-                </div></td></tr>`).join('')}</tbody></table></div>`
-          : '<p>You are not in a group yet. Join your DM\'s group with their invite code, or start your own.</p>'}
-        <form class="stack" id="join-form" novalidate>
-          <div class="field"><label for="join-code">Join a group</label>
-            <div class="inline-form"><input id="join-code" name="code" placeholder="Invite code" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn" type="submit">Join</button></div>
-            <span class="error" id="err-code" hidden></span></div>
-        </form>
-        <form class="stack" id="create-form" novalidate>
-          <div class="field"><label for="group-name">Start a new group (you will be its DM)</label>
-            <div class="inline-form"><input id="group-name" name="name" maxlength="60" placeholder="Campaign name" autocomplete="off"><button class="btn" type="submit">Create</button></div>
-            <span class="error" id="err-name" hidden></span></div>
-        </form>
+      <section class="card stack">
+        <h2>Details</h2>
+        <dl class="stat-grid">
+          <div><dt>Username</dt><dd>${esc(u.username)}</dd></div>
+          <div><dt>Campaigns</dt><dd>${state.groups.length}</dd></div>
+          ${u.isAdmin ? '<div><dt>Site role</dt><dd>Admin</dd></div>' : ''}
+        </dl>
+        <div class="row"><a class="btn primary" href="#/characters">${icon('users')}My characters</a>
+          <a class="btn" href="#/campaigns">${icon('flag')}My campaigns</a></div>
       </section>
       <section class="card">
         <h2>Change password</h2>
@@ -137,50 +122,6 @@ function renderProfile(main) {
     </div>
     ${u.isAdmin ? '<section class="card stack gap-above" id="admin"><h2>All accounts</h2><p class="muted">Loading...</p></section>' : ''}`;
 
-  const showError = (form, error) => {
-    const key = Object.keys(error.fields || {})[0];
-    const slot = key && form.querySelector(`#err-${key}`);
-    if (slot) { slot.textContent = error.fields[key]; slot.hidden = false; form.querySelector(`[name=${key}]`)?.focus(); } else toast(error.message, 'error');
-  };
-  const switchTo = async (id, message) => {
-    await loadUser();
-    await setGroup(id);
-    toast(message);
-    reloadPage();
-  };
-
-  main.querySelector('#join-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try {
-      const { group } = await api('POST', '/groups/join', { code: e.target.code.value });
-      await switchTo(group.id, `You joined ${group.name}.`);
-    } catch (error) { showError(e.target, error); }
-  });
-  main.querySelector('#create-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try {
-      const { group } = await api('POST', '/groups', { name: e.target.name.value });
-      await switchTo(group.id, `${group.name} created. Share its invite code from the DM page.`);
-    } catch (error) { showError(e.target, error); }
-  });
-  main.querySelector('#groups').addEventListener('click', async (e) => {
-    const show = e.target.closest('[data-show]');
-    if (show) { await setGroup(show.dataset.show); toast(`Now showing ${state.group.name}.`); reloadPage(); return; }
-    const leave = e.target.closest('[data-leave]');
-    if (!leave) return;
-    const ok = await confirmDialog({
-      title: 'Leave group?',
-      message: `You will leave "${leave.dataset.name}". Your characters stay on your account, but the DM will no longer see them. If you are the last member, the group and its notes, encounters and homebrew are deleted.`,
-      confirmLabel: 'Leave group',
-      danger: true,
-    });
-    if (!ok) return;
-    try {
-      const { deleted } = await api('DELETE', `/groups/${leave.dataset.leave}/membership`);
-      await switchTo(state.group?.id === leave.dataset.leave ? null : state.group?.id, deleted ? 'Group deleted.' : 'You left the group.');
-    } catch (error) { toast(error.message, 'error'); }
-  });
-
   main.querySelector('#pw-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -189,7 +130,11 @@ function renderProfile(main) {
       await api('POST', '/auth/password', { current: form.current.value, next: form.next.value });
       form.reset();
       toast('Password updated.');
-    } catch (error) { showError(form, error); }
+    } catch (error) {
+      const key = Object.keys(error.fields || {})[0];
+      const slot = key && form.querySelector(`#err-${key}`);
+      if (slot) { slot.textContent = error.fields[key]; slot.hidden = false; form[key].focus(); } else toast(error.message, 'error');
+    }
   });
 
   if (u.isAdmin) adminSection(main.querySelector('#admin'));

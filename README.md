@@ -22,10 +22,12 @@ Changes under `public/` and `data/` only need a browser refresh.
 **The first account you create becomes the site admin** (it can reset
 anyone's password). Create yours before sharing the address.
 
-**Each campaign is a group.** Under Account settings, start a group - you become
-its DM - and give your players its invite code from the DM page (Group tab).
-Several groups can use the same site, each with its own characters, notes and
-homebrew. When the site is online, set `INVITE_CODE` so only people with an
+**Campaigns.** Everything on the site works without one. To run a game, open
+**Campaigns**, start a campaign - you become its DM - and give your players its
+invite code (inside the campaign, Group tab). Several campaigns can share the
+site, each with its own party, notes and homebrew. Inside a campaign a gold
+banner shows under the top bar; the spell, item and class lists have a
+**Homebrew** filter to include a campaign's homebrew while browsing. When the site is online, set `INVITE_CODE` so only people with an
 invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 
 ## What is where
@@ -34,13 +36,13 @@ invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 | ------------------------------------------- | -------------------------------------------------- |
 | **Change a Mana cost, damage number or any formula** | `public/js/rules/formulas.js` - see [Tuning the numbers](#tuning-the-numbers) below |
 | **Edit, add to or re-table the Codex**      | `public/js/rules/codex-content.js` - see [Editing the Codex](#editing-the-codex) below |
-| Add or edit a spell                         | DM page, or `data/spells/` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
+| Add or edit a spell                         | Your campaign (as DM), or `data/spells/` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
 | Add or edit a Physical / Aspectual Component | DM page (Spells > Physical & Aspectual), or `data/components.js` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
 | Add a custom subclass to any class          | DM page (Classes > Subclasses), or `data/subclasses.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#subclasses) |
 | Add an NPC or enemy (DM only)               | DM page (NPCs & Enemies), or `data/npcs.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#npcs--enemies-dm-only) |
-| Run a fight (turn order, HP, Guard)         | DM page > **Initiative Tracker** - [docs/INITIATIVE_TRACKER.md](docs/INITIATIVE_TRACKER.md) |
+| Run a fight (turn order, HP, Guard)         | Your campaign (as DM) > **Initiative Tracker** - [docs/INITIATIVE_TRACKER.md](docs/INITIATIVE_TRACKER.md) |
 | Hide something from players, or publish it  | DM page: the **Hide / Publish** button on any row - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md#hidden-or-public) |
-| Add or edit an item, weapon or class        | DM page, or `data/items.js` / `data/classes.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md) |
+| Add or edit an item, weapon or class        | Your campaign (as DM), or `data/items.js` / `data/classes.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md) |
 | Add a school, Form or item category         | `public/js/rules/constants.js`                     |
 | Add a field to the character sheet          | `public/js/rules/character.js` + `public/js/pages/sheet.js` |
 | Add a calculator                            | `public/js/calculators.js`                         |
