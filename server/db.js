@@ -7,6 +7,7 @@
  *
  * Tables
  *   users          one row per account            (is_admin = site admin; the old `role` column is unused)
+ *   email_tokens   one-time "confirm your email" and "reset your password" links
  *   sessions       one row per logged-in browser
  *   groups         one row per campaign           (each has its own invite code)
  *   memberships    who is in which group, and as 'dm' or 'player'
@@ -144,6 +145,23 @@ const MIGRATIONS = [
     }
     db.exec('DROP TABLE custom_spells; DROP TABLE catalog_visibility;');
   },
+
+  // 6 - Email addresses. Stored lowercase; unique when present (older accounts may have none).
+  //     email_tokens holds the one-time links sent by email: 'verify' (confirm the
+  //     address) and 'reset' (choose a new password). Only a hash of each token is kept.
+  `ALTER TABLE users ADD COLUMN email TEXT;
+   ALTER TABLE users ADD COLUMN email_verified_at TEXT;
+   ALTER TABLE users ADD COLUMN email_prompted INTEGER NOT NULL DEFAULT 0;  -- 1 = already asked to add one
+   CREATE UNIQUE INDEX users_email ON users(email) WHERE email IS NOT NULL;
+   CREATE TABLE email_tokens (
+     token_hash TEXT PRIMARY KEY,
+     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     purpose    TEXT NOT NULL,          -- 'verify' or 'reset'
+     email      TEXT NOT NULL,          -- the address it was sent to
+     created_at INTEGER NOT NULL,
+     expires_at INTEGER NOT NULL
+   );
+   CREATE INDEX email_tokens_user ON email_tokens(user_id);`,
 ];
 
 /** A group's invite code: 8 letters and digits, leaving out ones that look alike (0/O, 1/I/L). */

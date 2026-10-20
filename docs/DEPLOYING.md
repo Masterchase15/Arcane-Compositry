@@ -41,6 +41,11 @@ Any host that runs Node.js 22.13+ and gives you a **persistent disk** works
 - Set `INVITE_CODE` so strangers cannot sign up. With it set, signing up
   needs either this code (give it to people who will run their own group) or a
   group's invite code (players).
+- Turn on email (optional but recommended): make a free Resend account, verify
+  a domain you own, create an API key, and set `RESEND_API_KEY`, `MAIL_FROM`
+  and `SITE_URL`. Players can then confirm their email and reset forgotten
+  passwords themselves. Without it the site still works; a site admin resets
+  passwords instead.
 - Make yourself site admin: sign up on the site, then open the host's shell
   (for example `fly ssh console`, or the shell / `railway ssh` on Railway) and
   run `npm run make-admin <your username>`. Run it in the app folder, with the
@@ -59,6 +64,10 @@ database file would be wiped.
 | `COOKIE_SECURE` | Set to `1` when the site is served over HTTPS    | off         |
 | `INVITE_CODE`   | Lets people sign up without a group's invite code (e.g. new DMs). When set, signing up needs this code or a group's code | off: anyone can sign up |
 | `TRUST_PROXY`   | Number of proxies in front of the site (`1` on Railway, Render, Fly.io, Cloudflare Tunnel...). Leave unset when players connect straight to the server. | `0` |
+| `RESEND_API_KEY` | Turns on email (confirm your email, forgot password) through [Resend](https://resend.com) | off: no email; admins reset passwords |
+| `MAIL_FROM`     | Sender, on a domain you verified in Resend, e.g. `Arcane Compositry <noreply@example.com>` | - |
+| `SITE_URL`      | The site's public address, used in emailed links, e.g. `https://arcane.example.com` | `http://localhost:PORT` |
+| `MAIL_LOG`      | `1` = no real email; print each one in the server console instead. For trying it locally only. | off |
 
 ### Use HTTPS when it is on the public internet
 

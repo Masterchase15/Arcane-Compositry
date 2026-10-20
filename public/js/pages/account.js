@@ -1,9 +1,13 @@
 /**
  * pages/account.js - sign in, create an account (#/account). Once signed in:
- * change password, and - for the site admin - every account on the site, with
- * "Set password" for anyone locked out. Campaigns are on pages/campaigns.js.
+ * your email (add, change, confirm), change password, and - for the site
+ * admin - every account on the site, with "Set password" for anyone locked
+ * out. Campaigns are on pages/campaigns.js; the pages opened from emailed
+ * links (and "Forgot password") are in pages/email-links.js.
  */
 import { api, state, loadUser, refreshCatalog, campaignHref } from '../api.js';
+import { askForEmail } from './email-links.js';
+import { reloadPage } from '../nav.js';
 import { esc, icon, toast, openDialog } from '../ui.js';
 
 export function render(main, { query }) {
@@ -25,10 +29,15 @@ export function render(main, { query }) {
           ${message ? `<p class="error" role="alert" tabindex="-1" id="form-error">${icon('alert')} ${esc(message)}</p>` : ''}
           <form class="stack" novalidate>
             <div class="field">
-              <label for="username">Username <span aria-hidden="true">*</span></label>
+              <label for="username">${creating ? 'Username' : 'Username or email'} <span aria-hidden="true">*</span></label>
               <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required value="${esc(keep.username || '')}"${attrs('username')}>
-              ${creating ? '<span class="hint">3-24 letters, numbers, dashes or underscores.</span>' : ''}${err('username')}
+              ${creating ? '<span class="hint">3-24 letters, numbers, dashes or underscores. Other players see this.</span>' : ''}${err('username')}
             </div>
+            ${creating ? `<div class="field">
+              <label for="email">Email <span aria-hidden="true">*</span></label>
+              <input id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required value="${esc(keep.email || '')}"${attrs('email')}>
+              <span class="hint">Private - only you and the site admin see it. You can sign in with it, and reset your password if you forget it.</span>${err('email')}
+            </div>` : ''}
             ${creating ? `<div class="field">
               <label for="displayName">Display name</label>
               <input id="displayName" name="displayName" autocomplete="nickname" maxlength="40" value="${esc(keep.displayName || '')}">
@@ -51,7 +60,9 @@ export function render(main, { query }) {
           </form>
           <p class="muted">${creating ? 'Already have an account?' : 'No account yet?'}
             <button class="btn ghost sm" id="swap">${creating ? 'Sign in instead' : 'Create one'}</button></p>
-          ${creating ? '' : '<p class="small muted">Forgot your password? Ask the site admin (or your DM, who can pass it on) to set a new one for you.</p>'}
+          ${creating ? '' : state.mailEnabled
+            ? '<p class="small"><a href="#/forgot">Forgot your password?</a></p>'
+            : '<p class="small muted">Forgot your password? Ask the site admin (or your DM, who can pass it on) to set a new one for you.</p>'}
         </section>
         <aside class="stack">
           <div class="note-box"><h4>Why an account?</h4>
@@ -79,7 +90,10 @@ export function render(main, { query }) {
         const { joinedGroup } = await api('POST', `/auth/${creating ? 'register' : 'login'}`, body);
         await loadUser();
         await refreshCatalog();
-        toast(creating ? `Welcome, ${state.user.displayName}!` : 'Signed in.');
+        toast(creating
+          ? (state.mailEnabled ? `Welcome, ${state.user.displayName}! Check your email to confirm your address.` : `Welcome, ${state.user.displayName}!`)
+          : 'Signed in.');
+        askForEmail();
         // An invite code took them into a campaign: go straight to it.
         location.hash = joinedGroup ? campaignHref(joinedGroup) : `#${next.startsWith('/') ? next : '/characters'}`;
       } catch (error) {
@@ -103,11 +117,23 @@ function renderProfile(main) {
         <h2>Details</h2>
         <dl class="stat-grid">
           <div><dt>Username</dt><dd>${esc(u.username)}</dd></div>
+          <div><dt>Email</dt><dd>${u.email ? `${esc(u.email)} ${u.emailVerified ? '<span class="badge">Confirmed</span>' : '<span class="badge gold">Not confirmed</span>'}` : '<span class="muted">None</span>'}</dd></div>
           <div><dt>Campaigns</dt><dd>${state.groups.length}</dd></div>
           ${u.isAdmin ? '<div><dt>Site role</dt><dd>Admin</dd></div>' : ''}
         </dl>
         <div class="row"><a class="btn primary" href="#/characters">${icon('users')}My characters</a>
           <a class="btn" href="#/campaigns">${icon('flag')}My campaigns</a></div>
+      </section>
+      <section class="card stack">
+        <h2>${u.email ? 'Change email' : 'Add an email'}</h2>
+        ${u.email && !u.emailVerified && state.mailEnabled ? `<p class="small">We sent a link to <b>${esc(u.email)}</b>. Open it to confirm the address - until then it cannot be used to reset your password.
+          <button class="btn sm" id="resend" type="button">Send it again</button></p>` : ''}
+        <form class="stack" id="email-form" novalidate>
+          <input type="text" name="username" autocomplete="username" value="${esc(u.username)}" hidden>
+          <div class="field"><label for="new-email">${u.email ? 'New email' : 'Email'}</label><input id="new-email" name="email" type="email" autocomplete="email" required><span class="error" id="err-email" hidden></span></div>
+          ${u.email ? '<div class="field"><label for="email-pw">Your password</label><input id="email-pw" name="password" type="password" autocomplete="current-password" required><span class="error" id="err-password" hidden></span></div>' : ''}
+          <button class="btn" type="submit">${u.email ? 'Change email' : 'Add email'}</button>
+        </form>
       </section>
       <section class="card">
         <h2>Change password</h2>
@@ -120,6 +146,26 @@ function renderProfile(main) {
       </section>
     </div>
     ${u.isAdmin ? '<section class="card stack gap-above" id="admin"><h2>All accounts</h2><p class="muted">Loading...</p></section>' : ''}`;
+
+  main.querySelector('#resend')?.addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    try { await api('POST', '/auth/verify/resend'); toast('Sent. Check your inbox (and spam folder).'); } catch (err) { toast(err.message, 'error'); }
+  });
+  main.querySelector('#email-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    form.querySelectorAll('.error').forEach((el) => { el.hidden = true; });
+    try {
+      await api('PUT', '/auth/email', { email: form.email.value, password: form.password?.value });
+      await loadUser();
+      toast(state.mailEnabled ? 'Saved. Check that inbox for a link to confirm it.' : 'Email saved.');
+      reloadPage();
+    } catch (error) {
+      const key = Object.keys(error.fields || {})[0];
+      const slot = key && form.querySelector(`#err-${key}`);
+      if (slot) { slot.textContent = error.fields[key]; slot.hidden = false; form[key].focus(); } else toast(error.message, 'error');
+    }
+  });
 
   main.querySelector('#pw-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -146,10 +192,10 @@ async function adminSection(box) {
     <h2>All accounts</h2>
     <p class="small muted">You are the site admin. Set a temporary password for anyone who is locked out and tell them in person. Admins are added or removed on the server with <code>npm run make-admin</code>.</p>
     <div class="table-wrap"><table>
-      <thead><tr><th>Name</th><th>Username</th><th>Groups</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Groups</th><th>Actions</th></tr></thead>
       <tbody>${users.map((x) => `<tr>
         <td><b>${esc(x.displayName)}</b>${x.isAdmin ? ' <span class="badge gold">Admin</span>' : ''}${x.id === state.user.id ? ' (you)' : ''}</td>
-        <td>${esc(x.username)}</td><td>${esc(x.groups || '-')}</td>
+        <td>${esc(x.username)}</td><td>${esc(x.email || '-')}${x.email && !x.emailVerified ? ' <span class="small muted">(not confirmed)</span>' : ''}</td><td>${esc(x.groups || '-')}</td>
         <td><div class="row">${x.id === state.user.id ? '' : `
           <button class="btn sm" data-pw="${x.id}" data-name="${esc(x.displayName)}">Set password</button>`}</div></td></tr>`).join('')}</tbody></table></div>`;
 

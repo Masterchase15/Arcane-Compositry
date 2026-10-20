@@ -118,7 +118,15 @@ group sees the same one. They save as you type, like the sheet.
 
 ## Accounts
 
-- Usernames and passwords only - no email is collected.
+- Each account has a public **username** and a private **email**; either signs
+  you in. Emails are only shown to the person and site admins.
+- With email turned on (`server/mail.js`, see DEPLOYING.md) the site sends a
+  "confirm your email" link at sign-up and when the email changes, and a
+  "reset your password" link from **Forgot password** - only ever to a
+  confirmed address. Links are one-time tokens (only a hash is stored) that
+  expire after 48 hours (confirm) or 1 hour (reset). Pages:
+  `public/js/pages/email-links.js`.
+- Accounts made before emails were collected are asked once to add one.
 - Passwords are hashed with scrypt; logins use an HttpOnly cookie.
 - **Site admins** can set a new password for anyone who forgot theirs (Account
   settings > All accounts). Admins are made and removed **only** on the server,

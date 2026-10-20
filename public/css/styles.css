@@ -541,3 +541,6 @@ dialog[open] { display: flex; flex-direction: column; animation: pop .18s ease-o
 .inline-form { display: flex; gap: 8px; align-items: stretch; }
 .inline-form input { flex: 1; min-width: 0; }
 .gap-above { margin-top: 24px; }
+
+/* Single-card pages: forgot / reset password, confirm email. */
+.narrow-page { max-width: 520px; margin: 0 auto; }
