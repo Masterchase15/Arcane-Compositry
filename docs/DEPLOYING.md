@@ -54,6 +54,27 @@ Any host that runs Node.js 22.13+ and gives you a **persistent disk** works
 Avoid "serverless" hosts with no disk (Vercel, Netlify functions): the
 database file would be wiped.
 
+### On Railway, step by step
+
+1. New project > Deploy from GitHub repo > pick this repo, branch `main`.
+   Railway builds the `Dockerfile` by itself.
+2. Settings: keep **1 replica** (the database is one file, and the sign-in
+   limit lives in memory).
+3. Add a **volume** to the service, mounted at `/app/storage`. Turn on its
+   backups if your plan has them.
+4. Variables: `COOKIE_SECURE=1`, `TRUST_PROXY=1`, `INVITE_CODE=...`,
+   `SITE_URL=https://<your domain>`, and for email `RESEND_API_KEY=...` and
+   `MAIL_FROM=Arcane Compositry <noreply@<your domain>>`. Do not set `HOST`
+   or `MAIL_LOG`; Railway sets `PORT` itself. (`STORAGE_DIR` is already
+   `/app/storage` in the Dockerfile.)
+5. Settings > Networking: add your custom domain and create the DNS record
+   Railway shows you at your domain registrar.
+6. In Resend, add the same domain and create the DNS records it shows (they
+   let Resend send as `noreply@<your domain>`).
+7. Once it is live: sign up, then in Railway's shell run
+   `node scripts/make-admin.js <your username>`. Redeploy once and check your
+   account is still there - that proves the volume works.
+
 ### Settings
 
 | Variable        | Meaning                                          | Default     |
