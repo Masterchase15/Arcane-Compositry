@@ -97,3 +97,17 @@ test('a DM can promote a member, but not change their own role', async () => {
   assert.equal((await player.get('/notes?kind=lore', A())).status, 200, 'now a DM there');
   await dmA.put(`/group/members/${p.id}/role`, { role: 'player' }, A());
 });
+
+test('a DM runs encounters, renames the campaign and reads NPCs - only in their own campaign', async () => {
+  const enc = (await dmA.post('/encounters', { name: 'Goblin ambush' }, A())).body.encounter;
+  assert.equal(enc.name, 'Goblin ambush');
+  assert.equal((await dmA.put(`/encounters/${enc.id}`, { name: 'Round 2', data: { round: 2, combatants: [] } }, A())).status, 200);
+  const list = (await dmA.get('/encounters', A())).body.encounters;
+  assert.equal(list[0].data.round, 2);
+  assert.equal((await dmB.del(`/encounters/${enc.id}`, B())).status, 404, 'another campaign cannot end it');
+  assert.equal((await dmA.del(`/encounters/${enc.id}`, A())).status, 200);
+
+  assert.equal((await dmA.put('/group', { name: 'Campaign A, renamed' }, A())).body.name, 'Campaign A, renamed');
+  assert.ok(Array.isArray((await dmA.get('/npcs', A())).body.npcs));
+  assert.equal((await player.get('/npcs', A())).status, 403, 'NPCs are never sent to players');
+});
