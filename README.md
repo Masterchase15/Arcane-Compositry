@@ -34,6 +34,8 @@ invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 
 ## What is where
 
+This is a change
+
 | You want to...                              | Go to                                              |
 | ------------------------------------------- | -------------------------------------------------- |
 | **Change a Mana cost, damage number or any formula** | `public/js/rules/formulas.js` - see [Tuning the numbers](#tuning-the-numbers) below |
