@@ -7,12 +7,14 @@ Change a file, refresh the browser.
 
 ```
  Browser (public/)                          Server (server.js + server/)
- ┌──────────────────────────┐               ┌─────────────────────────────┐
- │ app.js      which page?  │   /api/...    │ api.js    the endpoints     │
- │ pages/*.js  draw a page  │ ────────────► │ auth.js   accounts, logins  │
- │ rules/*.js  game maths   │ ◄──────────── │ catalog.js load + check     │
- │ calculators.js           │     JSON      │ db.js     storage/arcane.db │
- └──────────────────────────┘               └─────────────────────────────┘
+ ┌──────────────────────────┐               ┌──────────────────────────────────┐
+ │ app.js      which page?  │   /api/...    │ api.js       checks, then routes │
+ │ pages/*.js  draw a page  │ ────────────► │ routes/*.js  the endpoints       │
+ │ rules/*.js  game maths   │ ◄──────────── │ auth.js      accounts, logins    │
+ │ calculators.js           │     JSON      │ catalog.js   load + check lists  │
+ └──────────────────────────┘               │ db.js        storage/arcane.db   │
+                                            │ migrations.js  table changes     │
+                                            └──────────────────────────────────┘
                                              data/  spells, items, classes (files)
 ```
 
@@ -78,12 +80,38 @@ To make a number automatic (calculated, but overridable), compute it in
 
 ### Add a field to spells, items or classes
 1. `server/catalog.js` - add it to that list's validate function so it is kept.
-2. `public/js/pages/campaign.js` - add one line to that list's `fields` in `CATALOG`.
+2. `public/js/pages/campaign-homebrew.js` - add one line to that list's `fields` in `CATALOG`.
 3. Show it on the list's page (`spells.js`, `items.js` or `classes.js`).
 
 ### Add a server endpoint
-`server/api.js`: write a handler function and add one line to `ROUTES`,
-choosing who may call it (`'public'`, `'user'`, `'member'`, `'dm'` or `'admin'`).
+Pick the file in `server/routes/` for that feature (auth, email, campaigns,
+catalog, notes, encounters, characters, admin), write a handler function and
+add one line to its `routes`, choosing who may call it (`'public'`, `'user'`,
+`'member'`, `'dm'` or `'admin'`). `server/api.js` checks those before the
+handler runs. A brand-new routes file also needs adding to `ROUTE_FILES` in
+`server/api.js`. Then add a test (below).
+
+### Change the database tables
+Append a migration to `MIGRATIONS` in `server/migrations.js` - never edit an
+existing one. It runs once, by itself, the next time the server starts.
+
+### Add a tab to the campaign hub
+Write it as its own file next to `campaign-party.js` (export a function that
+fills the tab's `body`), then add it to `TABS` and the `if` chain in
+`public/js/pages/campaign.js`.
+
+## Tests
+
+`npm test` (or `node --test "test/*.test.js"`) runs every test in `test/`, in a
+second or two. Each test file starts the real server on a free port with an
+empty database in a temporary folder - your `storage/` is never touched - and
+talks to it like a browser would (`test/helpers.js`). They cover signing up and
+in, the attempt limit, invite codes, admins, the email links, keeping
+campaigns apart, character ownership, and upgrading an old database.
+
+Run them before every commit. When you add an endpoint or change a rule about
+who may do what, add a test next to the similar ones - that is what keeps one
+campaign's secrets from leaking into another as the site grows.
 
 ### Change the look
 The first block of `public/css/styles.css` holds the colour tokens (taken from
@@ -150,7 +178,8 @@ The site has two modes, and the address decides which:
   calculators and the spell, item and class lists show the standard rules. Those
   lists (and the Spellcrafter) have a **Homebrew** filter to include one of your
   campaigns' homebrew; a DM sees that campaign's hidden entries there too.
-- **Inside a campaign** - `#/campaign/<id>` (`public/js/pages/campaign.js`), with
+- **Inside a campaign** - `#/campaign/<id>` (`public/js/pages/campaign.js` and its
+  tab files `campaign-*.js`), with
   a gold campaign banner under the top bar. Tabs: Party (everyone), Homebrew
   (players: opens the lists with this campaign's homebrew), and the DM tools
   (DMs only): Initiative, Spells, Items, Classes, NPCs, Group, Notes, Lore.
