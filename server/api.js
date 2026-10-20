@@ -21,13 +21,15 @@
 import crypto from 'node:crypto';
 import { db, newInviteCode } from './db.js';
 import * as auth from './auth.js';
+import { sendMail, mailEnabled, siteUrl } from './mail.js';
 import { LISTS, getList, validateEntry, saveCustom, deleteCustom, setHidden, forgetVisibility } from './catalog.js';
 
 const MAX_BODY = 512 * 1024; // 512 KB is far more than any character sheet needs
 
 export const fail = (status, message, fields) => Object.assign(new Error(message), { status, fields });
 
-// ── Small brute-force guard: 10 login/register/join attempts per 5 minutes per address
+// ── Small brute-force guard: 10 attempts per 5 minutes per address (wrong passwords,
+//    sign-ups, joins, password-reset requests)
 const attempts = new Map();
 const WINDOW = 5 * 60e3;
 
@@ -48,13 +50,19 @@ function clientIp(req) {
   return req.socket.remoteAddress || 'unknown';
 }
 
-function throttle(req) {
-  const key = clientIp(req);
+/** Refuses the request if this address made too many attempts lately. */
+function checkThrottle(req) {
   const now = Date.now();
-  const recent = (attempts.get(key) || []).filter((t) => now - t < WINDOW);
+  const recent = (attempts.get(clientIp(req)) || []).filter((t) => now - t < WINDOW);
   if (recent.length >= 10) throw fail(429, 'Too many attempts. Wait a few minutes and try again.');
-  recent.push(now);
-  attempts.set(key, recent);
+  attempts.set(clientIp(req), recent);
+}
+const recordAttempt = (req) => attempts.get(clientIp(req)).push(Date.now());
+
+/** Counts this request as an attempt (sign-ups, joins, resets), refusing it if there were too many. */
+function throttle(req) {
+  checkThrottle(req);
+  recordAttempt(req);
 }
 
 // Forget addresses with no recent attempts, so the list does not grow forever.
@@ -81,7 +89,8 @@ function addMember(groupId, userId, role) {
 function register({ body, req, res }) {
   throttle(req);
   const username = String(body.username || '').trim();
-  const errors = auth.validateCredentials(username, body.password);
+  const errors = auth.validateCredentials(username, body.password, body.email);
+  if (!errors.email && auth.emailTaken(body.email)) errors.email = 'That email is already used by another account.';
   const code = cleanCode(body.inviteCode);
   const joining = groupByCode(code);
   if (code ? !joining && !isSiteCode(code) : INVITE_CODE) {
@@ -91,17 +100,22 @@ function register({ body, req, res }) {
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) {
     throw fail(409, 'That username is taken.', { username: 'That username is taken.' });
   }
-  const user = auth.createUser({ username, displayName: body.displayName, password: body.password });
+  const user = auth.createUser({ username, displayName: body.displayName, password: body.password, email: body.email });
   if (joining) addMember(joining.id, user.id, 'player');
+  sendVerification(user.id, user.email);
   res.setHeader('Set-Cookie', auth.sessionCookie(req, auth.createSession(user.id)));
   return { user: auth.publicUser(user), joinedGroup: joining?.id || null };
 }
 
+/** Sign in with a username or an email address (body.username holds either). */
 function login({ body, req, res }) {
-  throttle(req);
-  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(String(body.username || '').trim());
+  // Only WRONG passwords count toward the limit, so a whole table signing in
+  // from the same Wi-Fi on game night does not lock itself out.
+  checkThrottle(req);
+  const row = auth.findLogin(body.username);
   if (!row || !auth.verifyPassword(String(body.password || ''), row.password_hash)) {
-    throw fail(401, 'Username or password is incorrect.');
+    recordAttempt(req);
+    throw fail(401, 'Username, email or password is incorrect.');
   }
   res.setHeader('Set-Cookie', auth.sessionCookie(req, auth.createSession(row.id)));
   return { user: auth.publicUser(row) };
@@ -121,6 +135,101 @@ function changePassword({ user, body }) {
   const problem = auth.validatePassword(body.next);
   if (problem) throw fail(400, problem, { next: problem });
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(auth.hashPassword(body.next), user.id);
+  db.prepare("DELETE FROM email_tokens WHERE user_id = ? AND purpose = 'reset'").run(user.id);
+  return { ok: true };
+}
+
+// ── Email: confirm the address, forgotten password, change address ───────────
+/** Emails a "confirm your email" link. Does not wait for the email to go out. */
+function sendVerification(userId, email) {
+  if (!mailEnabled || !email) return;
+  const token = auth.createEmailToken(userId, 'verify', email);
+  void sendMail({
+    to: email,
+    subject: 'Confirm your email for Arcane Compositry',
+    text: `Confirm this address for your Arcane Compositry account by opening this link:\n\n${siteUrl()}/#/verify?token=${token}\n\n`
+      + `The link works once and expires in ${auth.TOKEN_HOURS.verify} hours. If you did not sign up, ignore this email.`,
+  });
+}
+
+/** Opening the link from the confirmation email. */
+function verifyEmail({ body }) {
+  const row = auth.consumeEmailToken(body.token, 'verify');
+  if (!row) throw fail(400, 'This link has expired or was already used. Sign in and send a new one from Account settings.');
+  db.prepare('UPDATE users SET email_verified_at = ? WHERE id = ?').run(new Date().toISOString(), row.user_id);
+  return { ok: true };
+}
+
+/** "Send the confirmation email again". At most one a minute. */
+function resendVerification({ user, req }) {
+  throttle(req);
+  if (!mailEnabled) throw fail(400, 'This site cannot send email.');
+  if (!user.email) throw fail(400, 'Add an email address first.');
+  if (user.email_verified_at) return { ok: true, alreadyVerified: true };
+  if (Date.now() - auth.lastTokenAt(user.id, 'verify') < 60e3) throw fail(429, 'An email was just sent. Wait a minute before asking again.');
+  sendVerification(user.id, user.email);
+  return { ok: true };
+}
+
+/**
+ * "Forgot password": emails a reset link - but only to a CONFIRMED address.
+ * The answer is the same whether or not the address has an account, so this
+ * cannot be used to find out who has one.
+ */
+function forgotPassword({ body, req }) {
+  throttle(req);
+  if (!mailEnabled) throw fail(400, 'This site cannot send email. Ask a site admin to set a new password for you.');
+  const email = auth.normalizeEmail(body.email);
+  const user = email ? db.prepare('SELECT id, email, email_verified_at FROM users WHERE email = ?').get(email) : null;
+  if (user?.email_verified_at && Date.now() - auth.lastTokenAt(user.id, 'reset') > 60e3) {
+    const token = auth.createEmailToken(user.id, 'reset', user.email);
+    void sendMail({
+      to: user.email,
+      subject: 'Reset your Arcane Compositry password',
+      text: `Someone (hopefully you) asked to reset the password for your Arcane Compositry account. Choose a new one here:\n\n`
+        + `${siteUrl()}/#/reset?token=${token}\n\nThe link works once and expires in ${auth.TOKEN_HOURS.reset} hour. `
+        + 'If you did not ask for this, ignore this email - your password stays the same.',
+    });
+  }
+  return { ok: true };
+}
+
+/** Opening the reset link: sets the new password and signs the account out everywhere. */
+function resetPassword({ body, req }) {
+  throttle(req);
+  const problem = auth.validatePassword(body.password);
+  if (problem) throw fail(400, problem, { password: problem });
+  const row = auth.consumeEmailToken(body.token, 'reset');
+  if (!row) throw fail(400, 'This link has expired or was already used. Ask for a new one.');
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(auth.hashPassword(body.password), row.user_id);
+  db.prepare('DELETE FROM email_tokens WHERE user_id = ?').run(row.user_id);
+  auth.destroyUserSessions(row.user_id);
+  return { ok: true };
+}
+
+/**
+ * Add or change your email. Changing an existing one needs your password,
+ * so someone at an unlocked computer cannot redirect your reset emails.
+ */
+function changeEmail({ user, body }) {
+  const problem = auth.validateEmail(body.email);
+  if (problem) throw fail(400, problem, { email: problem });
+  if (user.email) {
+    const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id);
+    if (!auth.verifyPassword(String(body.password || ''), row.password_hash)) {
+      throw fail(400, 'Password is incorrect.', { password: 'Password is incorrect.' });
+    }
+  }
+  if (auth.emailTaken(body.email, user.id)) throw fail(409, 'That email is already used by another account.', { email: 'That email is already used by another account.' });
+  if (auth.normalizeEmail(body.email) === user.email) return { ok: true, email: user.email };
+  auth.setEmail(user.id, body.email);
+  sendVerification(user.id, auth.normalizeEmail(body.email));
+  return { ok: true, email: auth.normalizeEmail(body.email) };
+}
+
+/** "Not now" on the add-your-email prompt: do not ask again. */
+function skipEmailPrompt({ user }) {
+  db.prepare('UPDATE users SET email_prompted = 1 WHERE id = ?').run(user.id);
   return { ok: true };
 }
 
@@ -132,7 +241,7 @@ function me({ user }) {
           WHERE m.user_id = ? ORDER BY g.name COLLATE NOCASE`
       ).all(user.id).map(groupOut)
     : [];
-  return { user: auth.publicUser(user), groups, inviteRequired: !!INVITE_CODE };
+  return { user: auth.publicUser(user), groups, inviteRequired: !!INVITE_CODE, mailEnabled };
 }
 
 // ── Groups ───────────────────────────────────────────────────────────────────
@@ -441,7 +550,7 @@ function deleteCharacter({ user, params }) {
 function listAccounts() {
   const rows = db
     .prepare(
-      `SELECT u.id, u.username, u.display_name, u.is_admin, u.created_at,
+      `SELECT u.id, u.username, u.display_name, u.is_admin, u.email, u.email_verified_at, u.email_prompted, u.created_at,
               (SELECT group_concat(g.name, ', ') FROM memberships m JOIN groups g ON g.id = m.group_id WHERE m.user_id = u.id) AS group_names
          FROM users u ORDER BY u.created_at`
     )
@@ -450,7 +559,7 @@ function listAccounts() {
 }
 
 /** The admin sets a temporary password for someone who forgot theirs. */
-function resetPassword({ params, body }) {
+function adminSetPassword({ params, body }) {
   const problem = auth.validatePassword(body.password);
   if (problem) throw fail(400, problem);
   if (!db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(auth.hashPassword(body.password), params.id).changes) {
@@ -467,6 +576,12 @@ const ROUTES = [
   ['POST',   '/api/auth/login',              'public', login],
   ['POST',   '/api/auth/logout',             'public', logout],
   ['POST',   '/api/auth/password',           'user',   changePassword],
+  ['PUT',    '/api/auth/email',              'user',   changeEmail],
+  ['POST',   '/api/auth/email/skip',         'user',   skipEmailPrompt],
+  ['POST',   '/api/auth/verify',             'public', verifyEmail],
+  ['POST',   '/api/auth/verify/resend',      'user',   resendVerification],
+  ['POST',   '/api/auth/forgot',             'public', forgotPassword],
+  ['POST',   '/api/auth/reset',              'public', resetPassword],
 
   ['POST',   '/api/groups',                  'user',   createGroup],
   ['POST',   '/api/groups/join',             'user',   joinGroup],
@@ -511,7 +626,7 @@ const ROUTES = [
 
   ['GET',    '/api/admin/users',             'admin',  listAccounts],
   // (Admins are made on the server with scripts/make-admin.js - deliberately no route for it.)
-  ['PUT',    '/api/admin/users/:id/password', 'admin', resetPassword],
+  ['PUT',    '/api/admin/users/:id/password', 'admin', adminSetPassword],
 ].map(([method, pattern, access, handler]) => ({
   method, access, handler,
   regex: new RegExp(`^${pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)')}$`),

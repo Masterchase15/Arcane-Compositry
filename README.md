@@ -19,6 +19,10 @@ Then open <http://localhost:3000>. On Windows you can also double-click
 **Restart it after changing anything in the `server/` folder or `server.js`.**
 Changes under `public/` and `data/` only need a browser refresh.
 
+**Accounts** have a username (shown to other players) and a private email;
+either one signs you in. To let players confirm their email and reset forgotten
+passwords themselves, turn on email - see [docs/DEPLOYING.md](docs/DEPLOYING.md).
+
 **Site admins** can reset anyone's password (Account settings > All
 accounts). Nobody is an admin by default: create your account on the site,
 then on the server run `npm run make-admin <your username>`. Run

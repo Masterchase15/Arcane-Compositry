@@ -14,6 +14,7 @@
  *   COOKIE_SECURE=1    set when the site is served over https
  *   INVITE_CODE=...    code players need to create an account (unset = anyone can sign up)
  *   TRUST_PROXY=1      number of proxies in front of the site (set on hosting services)
+ *   RESEND_API_KEY, MAIL_FROM, SITE_URL, MAIL_LOG   email - see server/mail.js
  */
 import http from 'node:http';
 import fs from 'node:fs';

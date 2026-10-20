@@ -36,6 +36,7 @@ const ROUTES = [
   { path: /^\/guide$/,                          load: () => import('./pages/guide.js') },
   { path: /^\/account$/,                        load: () => import('./pages/account.js') },
   { path: /^\/campaigns$/,                      load: () => import('./pages/campaigns.js') },
+  { path: /^\/(?:forgot|reset|verify)$/,        load: () => import('./pages/email-links.js') },
   { path: /^\/campaign\/([\w-]+)$/,             load: () => import('./pages/campaign.js') },
   // Old address of the DM page: the campaign list now leads to each campaign's DM tools.
   { path: /^\/dm$/,                             load: () => import('./pages/campaigns.js') },
@@ -235,6 +236,8 @@ await loadUser();
 await useGroup(state.homebrew);
 await Promise.all([loadClasses().catch(() => {}), loadComponents().catch(() => {})]);
 window.addEventListener('hashchange', route);
-route();
+await route();
+// Older accounts without an email are asked once to add one.
+if (state.user?.askForEmail) import('./pages/email-links.js').then((m) => m.askForEmail());
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

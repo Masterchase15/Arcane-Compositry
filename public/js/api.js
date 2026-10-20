@@ -48,9 +48,10 @@ export async function api(method, path, body, options = {}) {
  * Shared state. `user` is null when signed out. `groups` = every campaign the
  * user is in. `group` = the campaign the current page is using (see above).
  * `homebrew` = the campaign id picked in the browsing pages' Homebrew filter.
- * `inviteRequired` = sign-up needs an invite code.
+ * `inviteRequired` = sign-up needs an invite code. `mailEnabled` = the server can
+ * send email (so "Forgot password" works).
  */
-export const state = { user: null, groups: [], group: null, homebrew: null, inviteRequired: false, spells: null, items: null, classes: null, components: null, subclasses: null };
+export const state = { user: null, groups: [], group: null, homebrew: null, inviteRequired: false, mailEnabled: false, spells: null, items: null, classes: null, components: null, subclasses: null };
 
 const HOMEBREW_KEY = 'ac-homebrew';
 const remember = {
@@ -65,6 +66,7 @@ export async function loadUser() {
     state.user = me.user;
     state.groups = me.groups || [];
     state.inviteRequired = !!me.inviteRequired;
+    state.mailEnabled = !!me.mailEnabled;
   } catch { state.user = null; state.groups = []; }
   // Forget a Homebrew choice for a campaign you are no longer in.
   state.homebrew = state.groups.some((g) => g.id === remember.get()) ? remember.get() : null;
