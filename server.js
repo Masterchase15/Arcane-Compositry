@@ -63,7 +63,8 @@ function serveStatic(req, res, url) {
       'Last-Modified': stat.mtime.toUTCString(),
     });
     if (req.method === 'HEAD') return res.end();
-    fs.createReadStream(file).pipe(res);
+    // A read error (file removed mid-request...) must end this response, not crash the server.
+    fs.createReadStream(file).on('error', () => res.destroy()).pipe(res);
   });
 }
 
@@ -73,11 +74,19 @@ function notFound(res) {
 }
 
 const server = http.createServer((req, res) => {
-  for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
-  const url = new URL(req.url, 'http://localhost');
-  if (url.pathname.startsWith('/api/')) return handleApi(req, res, url);
-  if (req.method !== 'GET' && req.method !== 'HEAD') return notFound(res);
-  serveStatic(req, res, url);
+  // Once the site is public, bots send all sorts of broken addresses (e.g. "/%E0").
+  // Anything that throws here answers that one request with 400 - it must never
+  // stop the server for everyone else.
+  try {
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
+    const url = new URL(req.url, 'http://localhost');
+    if (url.pathname.startsWith('/api/')) return handleApi(req, res, url);
+    if (req.method !== 'GET' && req.method !== 'HEAD') return notFound(res);
+    serveStatic(req, res, url);
+  } catch {
+    if (!res.headersSent) res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Bad request');
+  }
 });
 
 server.listen(PORT, HOST, () => {
