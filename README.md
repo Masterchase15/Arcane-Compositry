@@ -162,7 +162,7 @@ a sheet is opened.
 
 ---
 
-## Editing the Codex
+## Editing the Codex.
 
 All of the Codex text lives in **one file**:
 
