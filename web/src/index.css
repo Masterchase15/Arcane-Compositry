@@ -123,3 +123,66 @@
 @utility rule-gold {
   @apply h-0.5 border-0 bg-gradient-to-r from-gold to-transparent;
 }
+
+/*
+ * Rules text: the Codex chapters, the character guide and other hand-written
+ * HTML (shared/rules/codex-content.js) is shown inside <RichHtml>, which adds
+ * the .prose-ac class. These are the building blocks that text uses.
+ */
+@layer components {
+  .prose-ac { @apply leading-relaxed; }
+  .prose-ac > * + * { @apply mt-4; }
+  .prose-ac h2 { @apply mt-8 text-2xl font-bold; }
+  .prose-ac h3 { @apply mt-6 text-xl font-semibold; }
+  .prose-ac h4 { @apply mt-4 font-semibold; }
+  .prose-ac p + p { @apply mt-3; }
+  .prose-ac ul { @apply list-disc space-y-1 pl-6; }
+  .prose-ac ol:not(.steps) { @apply list-decimal space-y-1 pl-6; }
+  .prose-ac a:not(.btn):not(.card) { @apply font-semibold text-primary underline decoration-gold/60 underline-offset-4 hover:decoration-gold; }
+  .prose-ac b, .prose-ac strong { @apply font-bold; }
+
+  .prose-ac .table-wrap { @apply overflow-x-auto rounded-md border; }
+  .prose-ac table { @apply w-full border-collapse text-[0.95rem]; }
+  .prose-ac th { @apply whitespace-nowrap bg-header px-2.5 py-2 text-left text-xs font-bold uppercase tracking-wider text-header-foreground; }
+  .prose-ac td { @apply border-b px-2.5 py-2 align-top; }
+  .prose-ac tbody tr:nth-child(even) td { @apply bg-muted/50; }
+  .prose-ac .c { @apply text-center; }
+
+  .prose-ac .lead { @apply font-serif text-lg text-muted-foreground; }
+  .prose-ac .small { @apply text-sm; }
+  .prose-ac .muted { @apply text-muted-foreground; }
+  .prose-ac .fine { @apply text-sm italic text-muted-foreground; }
+  .prose-ac .grid { @apply grid gap-4; }
+  .prose-ac .cols-2 { @apply sm:grid-cols-2; }
+  .prose-ac .cols-auto { @apply grid-cols-[repeat(auto-fill,minmax(260px,1fr))]; }
+  .prose-ac .stack > * + * { @apply mt-3; }
+
+  .prose-ac .pull { @apply border-l-4 border-gold py-1.5 pl-4 font-serif text-xl; }
+  .prose-ac .callout { @apply rounded-r-lg border-l-4 border-gold bg-gold-soft px-4 py-3; }
+  .prose-ac .callout b:first-child { @apply text-gold-ink; }
+  .prose-ac .formula { @apply rounded-r-lg border-l-4 border-primary/50 bg-accent px-3.5 py-2.5 font-mono text-[0.95rem] font-bold text-accent-foreground; }
+  .prose-ac .formula.gold { @apply border-gold bg-gold-soft text-foreground; }
+  .prose-ac .dark-box { @apply rounded-lg bg-header px-4.5 py-4 text-header-foreground; }
+  .prose-ac .dark-box h3, .prose-ac .dark-box h4 { @apply text-[#ecd98f]; }
+  .prose-ac .dark-box .kicker { @apply text-[#e5cf85]; }
+  .prose-ac .note-box { @apply rounded-lg border border-gold-line bg-gold-soft/60 px-4 py-3.5; }
+  .prose-ac .note-box h4, .prose-ac .plain-box h4 { @apply mt-0 text-sm uppercase tracking-wide text-gold-ink; }
+  .prose-ac .plain-box { @apply rounded-lg border bg-card px-4 py-3.5; }
+
+  .prose-ac .steps { @apply grid list-none grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5 p-0; }
+  .prose-ac .steps li { @apply grid grid-cols-[34px_1fr] gap-3; }
+  .prose-ac .steps .n { @apply flex size-[34px] items-center justify-center rounded-full bg-header font-serif font-bold text-header-foreground; }
+  .prose-ac .steps h4 { @apply mt-1 mb-0.5; }
+  .prose-ac .steps p { @apply m-0 text-[0.95rem]; }
+
+  .prose-ac .chips { @apply flex flex-wrap gap-2; }
+  .prose-ac .chip { @apply inline-flex items-center rounded-full border border-primary/30 bg-accent px-2.5 py-0.5 text-sm font-semibold text-accent-foreground; }
+  .prose-ac .chip.gold { @apply border-gold-line bg-gold-soft text-gold-ink; }
+
+  .prose-ac .stat-grid { @apply my-3 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-px overflow-hidden rounded-lg border bg-border; }
+  .prose-ac .stat-grid > div { @apply bg-card px-2.5 py-2; }
+  .prose-ac .stat-grid dt { @apply text-xs font-bold uppercase tracking-wider text-muted-foreground; }
+
+  .prose-ac .card { @apply block rounded-xl border bg-card p-4 no-underline shadow-sm transition-colors hover:border-primary; }
+  .prose-ac .card h3 { @apply mt-1 text-lg; }
+}
