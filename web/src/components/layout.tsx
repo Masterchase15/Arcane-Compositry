@@ -89,8 +89,9 @@ function TopBar() {
 }
 
 function AccountMenu() {
-  const { user, refresh } = useSession();
+  const { user, loaded, refresh } = useSession();
   const navigate = useNavigate();
+  if (!loaded) return null;
   if (!user) return <Button asChild size="sm"><Link to="/account">Sign in</Link></Button>;
 
   const signOut = async () => {

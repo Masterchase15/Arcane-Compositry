@@ -10,7 +10,7 @@
  * (or none). The campaign hub sits in <CampaignScope>: it uses its own campaign
  * and shows the gold campaign banner. (See lib/catalog.tsx.)
  */
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Outlet, Route, Routes, useLocation, useParams } from 'react-router';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -22,22 +22,37 @@ import { SessionProvider, useSession } from '@/lib/session';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router';
 
-const Home = lazy(() => import('./pages/home'));
-const Codex = lazy(() => import('./pages/codex'));
-const Craft = lazy(() => import('./pages/craft'));
-const Tools = lazy(() => import('./pages/tools'));
-const Spells = lazy(() => import('./pages/spells'));
-const Components = lazy(() => import('./pages/components'));
-const Items = lazy(() => import('./pages/items'));
-const Classes = lazy(() => import('./pages/classes'));
-const Characters = lazy(() => import('./pages/characters'));
-const NewCharacter = lazy(() => import('./pages/new-character'));
-const Sheet = lazy(() => import('./pages/sheet'));
-const Guide = lazy(() => import('./pages/guide'));
-const Account = lazy(() => import('./pages/account'));
-const Campaigns = lazy(() => import('./pages/campaigns'));
-const Campaign = lazy(() => import('./pages/campaign'));
-const EmailLinks = lazy(() => import('./pages/email-links'));
+const Home = page(() => import('./pages/home'));
+const Codex = page(() => import('./pages/codex'));
+const Craft = page(() => import('./pages/craft'));
+const Tools = page(() => import('./pages/tools'));
+const Spells = page(() => import('./pages/spells'));
+const Components = page(() => import('./pages/components'));
+const Items = page(() => import('./pages/items'));
+const Classes = page(() => import('./pages/classes'));
+const Characters = page(() => import('./pages/characters'));
+const NewCharacter = page(() => import('./pages/new-character'));
+const Sheet = page(() => import('./pages/sheet'));
+const Guide = page(() => import('./pages/guide'));
+const Account = page(() => import('./pages/account'));
+const Campaigns = page(() => import('./pages/campaigns'));
+const Campaign = page(() => import('./pages/campaign'));
+const EmailLinks = page(() => import('./pages/email-links'));
+
+/**
+ * Loads a page's code when it is first visited. After a new version of the site
+ * is deployed, a tab that was already open asks for page files that no longer
+ * exist - then reload once to get the new version.
+ */
+function page(load: () => Promise<{ default: ComponentType }>) {
+  return lazy(() => load().catch((err) => {
+    const KEY = 'ac-reloaded-for-update';
+    let reloaded: string | null = null;
+    try { reloaded = sessionStorage.getItem(KEY); sessionStorage.setItem(KEY, '1'); } catch { /* private mode */ }
+    if (!reloaded) { location.reload(); return new Promise<never>(() => {}); }
+    throw err;
+  }).then((m) => { try { sessionStorage.removeItem('ac-reloaded-for-update'); } catch { /* ignore */ } return m; }));
+}
 
 export function App() {
   return (
