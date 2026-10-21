@@ -38,7 +38,7 @@
  *      source: 'SRD 5.2',
  *    },
  *
- *  (The categories and rarities are listed in public/js/rules/constants.js -
+ *  (The categories and rarities are listed in shared/rules/constants.js -
  *   add a new one there and it appears in the filters.)
  *
  *  When a player presses "Add to character": weapons go into the sheet's

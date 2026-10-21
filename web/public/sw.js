@@ -10,7 +10,7 @@
  * Accounts, characters and saving (/api/...) always need the server and are
  * never cached.
  */
-const CACHE = 'arcane-compositry-v1';
+const CACHE = 'arcane-compositry-v2'; // bump to drop every older saved copy
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {
@@ -31,7 +31,11 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         if (response.ok) {
           const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
+          caches.open(CACHE).then((cache) => {
+            cache.put(request, copy.clone());
+            // Every page address (/spells, /codex/...) is the same app: keep one copy to open offline.
+            if (request.mode === 'navigate') cache.put('/index.html', copy);
+          });
         }
         return response;
       })

@@ -16,7 +16,7 @@
  *
  * CAMPAIGNS ("groups")
  *   The browser says which campaign it is showing by adding ?group=<id> to every
- *   request (public/js/api.js does this). `group` is then { id, name,
+ *   request (web/src/lib/api.ts does this). `group` is then { id, name,
  *   inviteCode, role } - but only if the user really is a member; otherwise null.
  *
  * To add an endpoint: write a handler in the right routes file and add a line to

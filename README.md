@@ -7,17 +7,28 @@ desktop and phones and can be installed as a web app.
 
 ## Start it
 
-You need [Node.js](https://nodejs.org) 22.13 or newer. Nothing else to install.
+You need [Node.js](https://nodejs.org) 22.13 or newer. The first time:
+
+```bash
+npm install
+npm run build
+```
+
+Then, every time:
 
 ```bash
 node server.js
 ```
 
-Then open <http://localhost:3000>. On Windows you can also double-click
-`start.bat`. To stop it, press Ctrl+C in its window (or close the window).
+and open <http://localhost:3000>. On Windows you can also double-click
+`start.bat`, which does all of that for you. To stop it, press Ctrl+C in its
+window (or close the window).
 
-**Restart it after changing anything in the `server/` folder or `server.js`.**
-Changes under `public/` and `data/` only need a browser refresh.
+**Working on the site?** Run `npm run dev` (the server) and `npm run dev:web`
+(the React app with live reload) together, and open <http://localhost:5173>.
+Edits under `web/` and `shared/` then show up instantly; `data/` edits need a
+browser refresh; `server/` edits restart the server by themselves. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 **Accounts** have a username (shown to other players) and a private email;
 either one signs you in. To let players confirm their email and reset forgotten
@@ -40,26 +51,27 @@ invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 
 | You want to...                              | Go to                                              |
 | ------------------------------------------- | -------------------------------------------------- |
-| **Change a Mana cost, damage number or any formula** | `public/js/rules/formulas.js` - see [Tuning the numbers](#tuning-the-numbers) below |
-| **Edit, add to or re-table the Codex**      | `public/js/rules/codex-content.js` - see [Editing the Codex](#editing-the-codex) below |
+| **Change a Mana cost, damage number or any formula** | `shared/rules/formulas.js` - see [Tuning the numbers](#tuning-the-numbers) below |
+| **Edit, add to or re-table the Codex**      | `shared/rules/codex-content.js` - see [Editing the Codex](#editing-the-codex) below |
 | Add or edit a spell                         | Your campaign (as DM), or `data/spells/` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
-| Add or edit a Physical / Aspectual Component | DM page (Spells > Physical & Aspectual), or `data/components.js` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
-| Add a custom subclass to any class          | DM page (Classes > Subclasses), or `data/subclasses.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#subclasses) |
-| Add an NPC or enemy (DM only)               | DM page (NPCs & Enemies), or `data/npcs.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#npcs--enemies-dm-only) |
+| Add or edit a Physical / Aspectual Component | Your campaign (as DM): Spells > Physical & Aspectual, or `data/components.js` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
+| Add a custom subclass to any class          | Your campaign (as DM): Classes > Subclasses, or `data/subclasses.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#subclasses) |
+| Add an NPC or enemy (DM only)               | Your campaign (as DM): NPCs & Enemies, or `data/npcs.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#npcs--enemies-dm-only) |
 | Run a fight (turn order, HP, Guard)         | Your campaign (as DM) > **Initiative Tracker** - [docs/INITIATIVE_TRACKER.md](docs/INITIATIVE_TRACKER.md) |
-| Hide something from players, or publish it  | DM page: the **Hide / Publish** button on any row - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md#hidden-or-public) |
+| Hide something from players, or publish it  | Your campaign (as DM): the **Hide / Publish** button on any row - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md#hidden-or-public) |
 | Add or edit an item, weapon or class        | Your campaign (as DM), or `data/items.js` / `data/classes.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md) |
-| Add a school, Form or item category         | `public/js/rules/constants.js`                     |
-| Add a field to the character sheet          | `public/js/rules/character.js` + `public/js/pages/sheet.js` |
-| Add a calculator                            | `public/js/calculators.js`                         |
-| Change colours or fonts                     | top of `public/css/styles.css`                     |
+| Add a school, Form or item category         | `shared/rules/constants.js`                        |
+| Add a field to the character sheet          | `shared/rules/character.js` + a tab in `web/src/components/sheet/` |
+| Add a calculator                            | `web/src/lib/calculators.js`                       |
+| Change colours or fonts                     | top of `web/src/index.css` (fonts: `web/index.html`) |
+| Add a page                                  | `web/src/pages/` + `web/src/App.tsx` - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Put it online / install it as an app        | [docs/DEPLOYING.md](docs/DEPLOYING.md)             |
 | Understand how the pieces fit               | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)       |
 
 Every file starts with a comment explaining what it does and how to extend it.
 
-After any edit: **save the file and refresh the browser.** There is no build
-step and (for everything under `public/` and `data/`) no restart.
+While `npm run dev:web` is running, saved edits show up in the browser at once.
+For the live site, `npm run build` (the Dockerfile does this on Railway).
 
 ---
 
@@ -68,7 +80,7 @@ step and (for everything under `public/` and `data/`) no restart.
 Every number the site calculates lives in **one file**:
 
 ```
-public/js/rules/formulas.js
+shared/rules/formulas.js
 ```
 
 The Spellcrafter, all the calculators, the character sheet's automatic values
@@ -155,7 +167,7 @@ Most of the site updates itself, but a few things are written-out text:
    `calculators.js`.
 3. **Compositry spells you already saved.** Each stores its own `mana` and
    `damage` text (so a codified spell can keep a discount). Update them on the
-   DM page or in `data/spells/compositry.js`.
+   campaign DM tabs or in `data/spells/compositry.js`.
 
 Characters need no fixing: their automatic numbers are recalculated every time
 a sheet is opened.
@@ -167,14 +179,14 @@ a sheet is opened.
 All of the Codex text lives in **one file**:
 
 ```
-public/js/rules/codex-content.js
+shared/rules/codex-content.js
 ```
 
 It is a list called `CHAPTERS`, one entry per codex page, in reading order:
 
 ```js
 {
-  id: 'active-defense',            // the address: #/codex/active-defense
+  id: 'active-defense',            // the address: /codex/active-defense
   section: 'lore',                 // which heading it sits under: 'how', 'lore' or 'ref'
   kicker: 'Active Defense',        // small gold line above the title
   title: 'Guard, Dodge, Parry & Block',
@@ -230,7 +242,7 @@ Arcane Intent, and the two cheat-sheet tables.
 | Small italic footnote              | `<p class="fine">...</p>`                            |
 | Two columns side by side           | `<div class="grid cols-2"><div>left</div><div>right</div></div>` |
 | A live calculator                  | `<div data-calc="guard"></div>` (ids are in `calculators.js`) |
-| A link to another chapter          | `<a href="#/codex/momentum-dice">Momentum Dice</a>`  |
+| A link to another chapter          | `<a href="/codex/momentum-dice">Momentum Dice</a>` (the older `#/codex/...` form works too) |
 
 ### Add a new chapter
 
@@ -285,13 +297,16 @@ data/                the lists you can edit by hand
   classes.js             classes
   subclasses.js          subclasses (each names its parent class)
   npcs.js                NPCs & enemies - DM only, never sent to players
-public/              everything the browser loads
+shared/rules/        the game rules: formulas, tables, codex text, sheet shape (server + browser)
+web/                 the React front end (TypeScript, Tailwind, shadcn/ui)
   index.html
-  css/styles.css     the whole look
-  js/app.js          navigation + which page to show
-  js/pages/          one file per page (the campaign hub: campaign.js + campaign-*.js per tab)
-  js/rules/          the game rules: formulas, tables, codex text, sheet shape
-  js/calculators.js  every interactive formula
+  public/            icons, app manifest, offline helper - copied as-is
+  src/App.tsx        every page and its address
+  src/pages/         one file per page
+  src/components/    shared pieces; sheet/ = the character sheet, campaign/ = the campaign hub
+  src/lib/           talking to the server, session, campaign scope, calculators
+  src/index.css      the whole look (colour tokens at the top)
+dist/                the built website (npm run build) - not in git
 scripts/             small helper commands
 test/                automated tests - run with: npm test
 storage/             the database (created on first run - back this up!)
@@ -301,8 +316,11 @@ docs/                guides for you
 ## Handy commands
 
 ```bash
-node server.js                  # run the site
-node --watch server.js          # run it and restart automatically when server files change
+node server.js                  # run the site (after npm run build)
+npm run dev                     # the server, restarting when server files change
+npm run dev:web                 # the React app with live reload on :5173 (run with npm run dev)
+npm run build                   # build the React app into dist/
+npm run typecheck               # check the TypeScript
 node scripts/check-spells.js    # check everything in data/ for typos
 node scripts/make-admin.js NAME # make the account NAME a site admin (add "off" to undo; no NAME lists admins)
 npm test                        # run the automated tests (do this before every commit)
@@ -314,7 +332,7 @@ message, use the `node ...` forms above or type `npm.cmd` instead of `npm`.)
 
 ## Your data
 
-Accounts, characters, DM notes and lore, initiative trackers, and anything added on the DM page all
+Accounts, characters, DM notes and lore, initiative trackers, and anything added in your campaign's DM tabs all
 live in one file: `storage/arcane.db`. Copy that file somewhere safe to back
 everything up. Passwords are stored only as salted hashes.
 

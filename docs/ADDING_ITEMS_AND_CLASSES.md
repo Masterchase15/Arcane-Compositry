@@ -1,19 +1,19 @@
 # Adding items, weapons, classes, subclasses and NPCs
 
 Items and classes work the same way spells do (see
-[ADDING_SPELLS.md](ADDING_SPELLS.md)): use the **DM page**, or edit a **data
+[ADDING_SPELLS.md](ADDING_SPELLS.md)): use your **campaign's DM tabs**, or edit a **data
 file**. Both combine.
 
-| List              | DM page tab       | Data file         |
+| List              | Campaign DM tab   | Data file         |
 | ----------------- | ----------------- | ----------------- |
 | Items & Weapons   | Items & Weapons   | `data/items.js`   |
 | Classes           | Classes > Classes | `data/classes.js` |
 | Subclasses        | Classes > Subclasses | `data/subclasses.js` |
 | NPCs & Enemies    | NPCs & Enemies (DM only) | `data/npcs.js` |
 
-On the DM page, **Edit** works on any entry. Editing an entry that comes from a
+In your campaign's DM tabs, **Edit** works on any entry. Editing an entry that comes from a
 file saves your version on top ("Edited here"); **Undo edits** brings the file
-version back. **Delete** removes entries added on the DM page.
+version back. **Delete** removes entries added in your campaign's DM tabs.
 
 After editing a data file by hand, check it:
 
@@ -41,7 +41,7 @@ Only **name**, **category** and **description** are required.
 | `tags`       | Search keywords                                                  |
 
 To add a new category or rarity, add its name to `ITEM_CATEGORIES` or
-`ITEM_RARITIES` in `public/js/rules/constants.js`.
+`ITEM_RARITIES` in `shared/rules/constants.js`.
 
 **How items work on a character sheet**
 
@@ -70,7 +70,7 @@ The twelve D&D (2024) classes ship in `data/classes.js`, each with its features
 by level. Their subclasses live in their own list (see **Subclasses** below). The text is a short summary for table reference;
 edit any class to add as much detail as you want.
 
-### Add a custom class on the DM page
+### Add a custom class in your campaign's DM tabs
 
 Your campaign (as DM) > **Classes** > **New class**. The form asks for:
 
@@ -106,9 +106,9 @@ Copy the template at the top of `data/classes.js`. Features are written as
 ### Changing a class's numbers
 
 Hit Die, saving throws, Invocation ability and Mana pool type are fields on the
-class, so change them with **Edit** on the DM page (or in the data file). The
+class, so change them with **Edit** in your campaign's DM tabs (or in the data file). The
 Mana pool *percentages* themselves (65% and 40%) are in
-`public/js/rules/formulas.js` under `CASTER_TYPES`.
+`shared/rules/formulas.js` under `CASTER_TYPES`.
 
 A class's `id` is made from its name. Do not rename a class that characters and
 spells already use - they remember it by name. Add a new class instead.

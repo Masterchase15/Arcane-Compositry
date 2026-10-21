@@ -4,7 +4,7 @@
  * ════════════════════════════════════════════════════════════════════════════
  *
  *  ONLY DM ACCOUNTS CAN SEE THIS LIST. It is never sent to players, and this
- *  file is not inside the public/ folder, so it cannot be opened from a browser.
+ *  file is not part of the built website (dist/), so it cannot be opened from a browser.
  *
  *  Everything on the DM page's "NPCs & Enemies" tab comes from this file (plus
  *  anything added on that tab).

@@ -11,7 +11,7 @@
  *
  * ─── ADDING A NEW FIELD TO THE SHEET ───────────────────────────────────────
  *  1. Add it (with a default) to blankCharacter() below.
- *  2. Show it in public/js/pages/sheet.js with  text('section.field', 'Label').
+ *  2. Show it on the sheet: add  <TextF path="section.field" label="Label" />  to the right tab in web/src/components/sheet/.
  *  Old saved characters pick up the new field automatically (see upgrade()).
  *
  * ─── AUTOMATIC NUMBERS ─────────────────────────────────────────────────────

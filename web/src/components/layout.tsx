@@ -162,7 +162,7 @@ export function CampaignBar({ group }: { group: Group }) {
   const { groups } = useSession();
   const others = groups.filter((g) => g.id !== group.id);
   return (
-    <div className="sticky top-[3.875rem] z-30 border-b-2 border-gold bg-gold-soft">
+    <div className="z-30 border-b-2 border-gold bg-gold-soft sm:sticky sm:top-[3.875rem]">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2">
         <div className="flex items-center gap-3">
           <Flag className="size-5 text-gold-ink" aria-hidden />

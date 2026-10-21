@@ -1,0 +1,6 @@
+node_modules
+dist
+storage
+.git
+.claude
+*.pdf
