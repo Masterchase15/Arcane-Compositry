@@ -17,7 +17,7 @@ export function sendVerification(userId, email) {
   void sendMail({
     to: email,
     subject: 'Confirm your email for Arcane Compositry',
-    text: `Confirm this address for your Arcane Compositry account by opening this link:\n\n${siteUrl()}/#/verify?token=${token}\n\n`
+    text: `Confirm this address for your Arcane Compositry account by opening this link:\n\n${siteUrl()}/verify?token=${token}\n\n`
       + `The link works once and expires in ${auth.TOKEN_HOURS.verify} hours. If you did not sign up, ignore this email.`,
   });
 }
@@ -57,7 +57,7 @@ function forgotPassword({ body, req }) {
       to: user.email,
       subject: 'Reset your Arcane Compositry password',
       text: `Someone (hopefully you) asked to reset the password for your Arcane Compositry account. Choose a new one here:\n\n`
-        + `${siteUrl()}/#/reset?token=${token}\n\nThe link works once and expires in ${auth.TOKEN_HOURS.reset} hour. `
+        + `${siteUrl()}/reset?token=${token}\n\nThe link works once and expires in ${auth.TOKEN_HOURS.reset} hour. `
         + 'If you did not ask for this, ignore this email - your password stays the same.',
     });
   }

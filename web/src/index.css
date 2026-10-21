@@ -1,0 +1,125 @@
+/*
+ * web/src/index.css - the site's look: Tailwind, plus the colour "tokens".
+ *
+ * The tokens below are the site's palette (from the Player's Field Codex PDF:
+ * forest green, gold rules, parchment, sage) mapped onto the names shadcn/ui
+ * components use (--primary, --card, --muted...). Change a token here and every
+ * component follows, in light and dark. Components themselves are in
+ * web/src/components/ui/ (shadcn: copied in, yours to edit).
+ */
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+
+  --background: #f7f5ec;          /* parchment page */
+  --foreground: #1f2d27;          /* ink */
+  --card: #ffffff;
+  --card-foreground: #1f2d27;
+  --popover: #ffffff;
+  --popover-foreground: #1f2d27;
+  --primary: #2d4a3e;             /* forest green */
+  --primary-foreground: #ffffff;
+  --secondary: #f2efe2;
+  --secondary-foreground: #1f2d27;
+  --muted: #f2efe2;
+  --muted-foreground: #4b5b53;
+  --accent: #dde8df;              /* sage */
+  --accent-foreground: #24463a;
+  --destructive: #b3261e;
+  --border: #d8d5c5;
+  --input: #cfcbb8;
+  --ring: #2d4a3e;
+
+  /* Arcane Compositry extras */
+  --gold: #b5923c;                /* decorative rules */
+  --gold-ink: #775815;            /* gold text that must stay readable */
+  --gold-soft: #f7efd6;           /* callouts, the campaign banner */
+  --gold-line: #dcc88f;
+  --header: #2d4a3e;              /* table headers, dark boxes */
+  --header-foreground: #f4f1e4;
+  --ok: #2b6a44;
+}
+
+.dark {
+  --background: #101714;
+  --foreground: #e7ede6;
+  --card: #18221d;
+  --card-foreground: #e7ede6;
+  --popover: #18221d;
+  --popover-foreground: #e7ede6;
+  --primary: #8fc4a6;
+  --primary-foreground: #0e1813;
+  --secondary: #1f2b25;
+  --secondary-foreground: #e7ede6;
+  --muted: #1f2b25;
+  --muted-foreground: #a9b8ae;
+  --accent: #22342b;
+  --accent-foreground: #cfe3d6;
+  --destructive: #f28b82;
+  --border: #2f3f36;
+  --input: #3a4b41;
+  --ring: #8fc4a6;
+
+  --gold: #c9a851;
+  --gold-ink: #e2c676;
+  --gold-soft: #2a2717;
+  --gold-line: #5a4d22;
+  --header: #26382f;
+  --header-foreground: #e7ede6;
+  --ok: #86cfa3;
+}
+
+@theme inline {
+  --font-sans: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-line: var(--gold-line);
+  --color-header: var(--header);
+  --color-header-foreground: var(--header-foreground);
+  --color-ok: var(--ok);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
+  h1, h2, h3, h4 { @apply font-serif text-foreground; }
+}
+
+/* A small uppercase gold label above headings ("Dungeon Master", "Saved to your account"). */
+@utility kicker {
+  @apply text-xs font-bold uppercase tracking-[0.18em] text-gold-ink;
+}
+/* The gold rule under page titles. */
+@utility rule-gold {
+  @apply h-0.5 border-0 bg-gradient-to-r from-gold to-transparent;
+}

@@ -38,7 +38,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { db } from './db.js';
-import { SCHOOLS, ANY_CLASS, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '../public/js/rules/constants.js';
+import { SCHOOLS, ANY_CLASS, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '../shared/rules/constants.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ABILITY_KEYS = ABILITIES.map((a) => a.key);

@@ -57,14 +57,14 @@ export async function startServer({ env = {}, storageDir = tempDir() } = {}) {
     /** The newest emailed link of a kind ('verify' or 'reset'), as its token. Waits briefly for the email. */
     async lastLink(kind) {
       for (let i = 0; i < 20; i++) {
-        const all = [...output.matchAll(new RegExp(`#/${kind}\\?token=([0-9a-f]+)`, 'g'))];
+        const all = [...output.matchAll(new RegExp(`/${kind}\\?token=([0-9a-f]+)`, 'g'))];
         if (all.length) return all.at(-1)[1];
         await new Promise((r) => setTimeout(r, 50));
       }
       return null;
     },
     /** How many emails of a kind have been "sent" so far. */
-    countLinks: (kind) => [...output.matchAll(new RegExp(`#/${kind}\\?token=`, 'g'))].length,
+    countLinks: (kind) => [...output.matchAll(new RegExp(`/${kind}\\?token=`, 'g'))].length,
     client(ip) { return new Client(base, ip || `10.0.${Math.floor(nextIp / 250)}.${(nextIp++ % 250) + 1}`); },
     /** Signs up a new account (with an email) and returns its signed-in client. */
     async signUp(username, extra = {}, client = this.client()) {

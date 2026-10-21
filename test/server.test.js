@@ -14,11 +14,11 @@ test('broken addresses get an error answer and never stop the server', async () 
     const res = await fetch(`${server.base}${bad}`);
     assert.ok(res.status >= 400 && res.status < 500, `${bad} answered ${res.status}`);
   }
-  const home = await fetch(`${server.base}/`);
-  assert.equal(home.status, 200, 'the site still answers afterwards');
+  const api = await fetch(`${server.base}/api/auth/me`);
+  assert.equal(api.status, 200, 'the site still answers afterwards');
 });
 
-test('files outside public/ are never served', async () => {
+test('files outside dist/ are never served', async () => {
   for (const path of ['/../server.js', '/..%2fserver.js', '/%2e%2e/package.json']) {
     const res = await fetch(`${server.base}${path}`);
     assert.notEqual(res.status, 200, `${path} must not be served`);
