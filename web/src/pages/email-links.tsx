@@ -26,7 +26,7 @@ export default function EmailLinks() {
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="mx-auto max-w-lg space-y-4 rounded-xl border bg-card p-6 shadow-sm">
+    <section className="mx-auto max-w-lg space-y-4 surface p-6">
       <div>
         <p className="kicker">Account</p>
         <h1 className="mt-1 text-3xl font-bold">{title}</h1>

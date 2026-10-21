@@ -23,17 +23,17 @@ export default function Home() {
   const { user } = useSession();
   return (
     <>
-      <section className="relative mb-8 overflow-hidden rounded-2xl bg-header px-6 py-10 text-header-foreground shadow-lg sm:px-10 sm:py-14">
-        <svg className="pointer-events-none absolute -right-6 -bottom-6 size-64 text-gold/25" viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden>
+      <section className="relative mb-10 overflow-hidden rounded-3xl bg-header bg-[radial-gradient(900px_400px_at_85%_120%,rgb(201_168_81/0.22),transparent_60%),radial-gradient(700px_380px_at_0%_0%,rgb(143_196_166/0.16),transparent_60%)] px-6 py-12 text-header-foreground shadow-xl ring-1 ring-gold/25 sm:px-12 sm:py-16">
+        <svg className="pointer-events-none absolute -right-4 -bottom-8 size-72 text-gold/30 sm:size-96" viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden>
           <path d="M100 195c0-50-40-60-40-105S100 40 100 5" /><path d="M100 150c20-10 45-12 55-40" /><path d="M82 110c-22-6-40-24-42-50" />
           <path d="M100 60c14-8 32-10 44-30" /><circle cx="155" cy="108" r="7" /><circle cx="40" cy="58" r="7" /><circle cx="145" cy="28" r="7" /><circle cx="100" cy="5" r="4" />
         </svg>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#e5cf85]">Dungeons &amp; Dragons expansion companion</p>
-        <h1 className="mt-2 text-4xl font-bold text-header-foreground sm:text-5xl">Arcane Compositry</h1>
-        <p className="mt-4 max-w-2xl font-serif text-lg opacity-90">
+        <h1 className="mt-3 text-4xl font-bold tracking-tight text-header-foreground sm:text-6xl">Arcane Compositry</h1>
+        <p className="mt-5 max-w-2xl font-serif text-lg leading-relaxed opacity-90 sm:text-xl">
           Choose what the magic is made of, choose what it does, choose how it manifests, choose how hard you push it - then pay the Mana.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap gap-3">
           {user
             ? <Button asChild size="lg" variant="secondary"><Link to="/characters"><Users />My characters</Link></Button>
             : <Button asChild size="lg" variant="secondary"><Link to="/account">Create an account</Link></Button>}
@@ -43,20 +43,22 @@ export default function Home() {
         </div>
       </section>
 
-      {user && <p className="mb-6 font-serif text-lg text-muted-foreground">Welcome back, {user.displayName}.</p>}
+      <div className="mb-5 flex items-baseline justify-between gap-3">
+        <h2 className="text-2xl font-bold">{user ? `Welcome back, ${user.displayName}` : 'Everything at the table'}</h2>
+      </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {FEATURES.map((f) => (
-          <Link key={f.to} to={f.to} className="group rounded-xl border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md">
-            <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground"><f.icon className="size-5" /></div>
-            <h3 className="text-lg font-semibold group-hover:text-primary">{f.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{f.text}</p>
+          <Link key={f.to} to={f.to} className="surface group flex flex-col p-5 transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg">
+            <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground ring-1 ring-primary/10 transition-colors group-hover:bg-primary group-hover:text-primary-foreground"><f.icon className="size-5" /></div>
+            <h3 className="text-xl font-semibold group-hover:text-primary">{f.title}</h3>
+            <p className="mt-1.5 leading-relaxed text-muted-foreground">{f.text}</p>
           </Link>
         ))}
       </div>
 
-      <section className="prose-ac mt-10">
-        <h2>How a Composition comes together</h2>
+      <section className="prose-ac surface mt-12 p-6 sm:p-8">
+        <h2 className="!mt-0">How a Composition comes together</h2>
         <p className="pull">Component(s) + Form + Potency + Modifiers = Composition</p>
         <div className="formula gold">Final Mana = Core Mana + Composite + Range + Area + Duration + Effect</div>
         <div className="formula">Damage Dice = Potency + 2 + floor(Potency / 3)</div>

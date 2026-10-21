@@ -181,10 +181,10 @@ export function InitiativeTab({ groupId }: { groupId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex flex-wrap gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Encounters">
+        <div className="tab-tray inline-flex flex-wrap" role="group" aria-label="Encounters">
           {encounters.map((e) => (
             <button key={e.id} type="button" aria-pressed={e.id === enc?.id} onClick={() => open(e.id)}
-              className={cn('rounded-md px-3 py-1.5 text-sm font-semibold', e.id === enc?.id ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+              className="tab-pill">
               {e.name}{e.data.combatants?.length ? ` (${e.data.combatants.filter((c) => !c.dead).length})` : ''}
             </button>
           ))}
@@ -349,7 +349,7 @@ function CombatantCard({ c, position, isUp, mutate, onDetails }: {
   };
 
   return (
-    <article className={cn('rounded-xl border bg-card p-3 shadow-xs', isUp && 'border-2 border-gold bg-gold-soft/40', c.dead && 'opacity-60', low && !c.dead && 'border-l-4 border-l-destructive')}>
+    <article className={cn('surface p-3', isUp && 'border-2 border-gold bg-gold-soft/40', c.dead && 'opacity-60', low && !c.dead && 'border-l-4 border-l-destructive')}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex size-8 items-center justify-center rounded-full bg-header font-serif text-sm font-bold text-header-foreground">{c.dead ? <X className="size-4" /> : position + 1}</span>
         <span className="font-serif text-lg font-bold">{c.name}</span>

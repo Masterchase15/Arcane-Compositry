@@ -16,7 +16,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
-import { AlertTriangle, ArrowLeft, Check, Droplet, Flag, Heart, Loader2, Shield, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, Droplet, Flag, Heart, Loader2, Shield } from 'lucide-react';
 import * as F from '@shared/rules/formulas.js';
 import { derive, upgrade } from '@shared/rules/character.js';
 import { Badge } from '@/components/ui/badge';
@@ -114,7 +114,7 @@ function Sheet({ loaded }: { loaded: Loaded }) {
 
   return (
     <SheetContext.Provider value={sheet}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Button asChild variant="ghost" size="sm">
           <Link to={isOwner ? '/characters' : `/campaign/${loaded.groupId}?tab=party`}><ArrowLeft />{isOwner ? 'My characters' : 'Back to the party'}</Link>
         </Button>
@@ -128,47 +128,72 @@ function Sheet({ loaded }: { loaded: Loaded }) {
         </p>
       )}
 
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold sm:text-4xl">{c.identity.name || 'Unnamed Character'}</h1>
-          <p className="text-muted-foreground">{subtitle}</p>
+      <header className="surface mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 p-4 sm:mb-5 sm:p-5">
+        <span className="flex size-12 shrink-0 items-center sm:size-16 justify-center rounded-2xl bg-header font-serif text-2xl font-bold text-[#ecd98f] ring-1 ring-gold/40" aria-hidden>
+          {initials(c.identity.name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold tracking-tight break-words sm:text-4xl">{c.identity.name || 'Unnamed Character'}</h1>
+          <p className="mt-0.5 text-muted-foreground">{subtitle}</p>
         </div>
         <SaveBadge save={save} retry={flush} />
       </header>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Vital icon={<Heart />} label="Hit Points" of={<>of {c.hp.max}{F.num(c.hp.temp) ? ` (+${F.num(c.hp.temp)} temp)` : ''}</>}>
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <Vital icon={<Heart />} label="Hit Points" tone="bg-hp text-hp" value={F.num(c.hp.current)} max={F.num(c.hp.max)}
+          of={<>of {c.hp.max}{F.num(c.hp.temp) ? ` (+${F.num(c.hp.temp)} temp)` : ''}</>}>
           <Stepper path="hp.current" label="current hit points" max={F.num(c.hp.max, Infinity) || Infinity} />
         </Vital>
-        <Vital icon={<Droplet />} label="Mana" of={<>of {d.manaMax}</>}><Stepper path="arcane.manaCurrent" label="current Mana" max={d.manaMax} /></Vital>
-        <Vital icon={<Shield />} label="Guard" of={<>of {d.guardMax}{F.num(c.chain.guardCurrent) <= 0 && <b className="text-destructive"> - Broken</b>}</>}>
+        <Vital icon={<Droplet />} label="Mana" tone="bg-mana text-mana" value={F.num(c.arcane.manaCurrent)} max={d.manaMax} of={<>of {d.manaMax}</>}>
+          <Stepper path="arcane.manaCurrent" label="current Mana" max={d.manaMax} />
+        </Vital>
+        <Vital icon={<Shield />} label="Guard" tone="bg-gold text-gold-ink" value={F.num(c.chain.guardCurrent)} max={d.guardMax}
+          of={<>of {d.guardMax}{F.num(c.chain.guardCurrent) <= 0 && <b className="text-destructive"> - Broken</b>}</>}>
           <Stepper path="chain.guardCurrent" label="current Guard" max={d.guardMax} />
         </Vital>
-        <Vital icon={<Zap />} label="At a glance">
-          <p className="font-semibold tabular-nums">AC {d.acTotal} · PB {F.signed(d.profBonus)} · Save DC {d.saveDC} · d{c.momentum.die}</p>
-        </Vital>
+        <div className="surface grid grid-cols-2 gap-px overflow-hidden bg-border p-0">
+          {([['Armor Class', d.acTotal], ['Prof. bonus', F.signed(d.profBonus)], ['Save DC', d.saveDC], ['Momentum', `d${c.momentum.die}`]] as const).map(([label, value]) => (
+            <div key={label} className="flex flex-col items-center justify-center bg-card px-2 py-3 text-center">
+              <span className="font-serif text-2xl font-bold tabular-nums">{value}</span>
+              <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Sheet sections">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={t.id === tab.id}
-            onClick={() => setParams((p) => { p.set('tab', t.id); return p; }, { replace: true })}
-            className={cn('rounded-md px-3 py-1.5 text-sm font-semibold transition-colors', t.id === tab.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-            {t.label}
-          </button>
-        ))}
+      <div className="sticky top-[calc(4rem+1px)] z-20 -mx-4 mb-6 bg-background/85 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="tab-tray" role="tablist" aria-label="Sheet sections">
+          {TABS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={t.id === tab.id} className="tab-pill flex-1"
+              onClick={() => setParams((p) => { p.set('tab', t.id); return p; }, { replace: true })}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div role="tabpanel"><tab.Tab /></div>
     </SheetContext.Provider>
   );
 }
 
-function Vital({ icon, label, of, children }: { icon: React.ReactNode; label: string; of?: React.ReactNode; children: React.ReactNode }) {
+const initials = (name: string) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?';
+
+/** A resource you spend in play: label, a bar showing how full it is, and [-] n [+]. */
+function Vital({ icon, label, tone, value, max, of, children }: {
+  icon: React.ReactNode; label: string; tone: string; value: number; max: number; of: React.ReactNode; children: React.ReactNode;
+}) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+  const [bar, text] = tone.split(' ');
   return (
-    <div className="rounded-xl border bg-card p-3 shadow-xs">
-      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground [&_svg]:size-4 [&_svg]:text-gold-ink">{icon}{label}</p>
+    <div className="surface p-3 sm:p-4">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-2">
+        <p className={cn('flex items-center gap-1.5 text-sm font-bold [&_svg]:size-4', text)}>{icon}{label}</p>
+        <p className="text-sm text-muted-foreground tabular-nums">{of}</p>
+      </div>
       {children}
-      {of && <p className="mt-1 text-center text-sm text-muted-foreground">{of}</p>}
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+        <div className={cn('h-full rounded-full transition-[width] duration-300', bar)} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }

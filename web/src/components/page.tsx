@@ -14,16 +14,16 @@ export function PageHead({ kicker, title, children, actions, className }: {
   kicker?: ReactNode; title: ReactNode; children?: ReactNode; actions?: ReactNode; className?: string;
 }) {
   return (
-    <header className={cn('mb-6', className)}>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <header className={cn('mb-8', className)}>
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          {kicker && <p className="kicker mb-1">{kicker}</p>}
-          <h1 className="text-3xl font-bold leading-tight sm:text-4xl">{title}</h1>
+          {kicker && <p className="kicker mb-2">{kicker}</p>}
+          <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-[2.6rem]">{title}</h1>
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
-      <hr className="rule-gold mt-3 w-full max-w-md" />
-      {children && <div className="mt-4 max-w-3xl text-lg text-muted-foreground">{children}</div>}
+      <hr className="rule-gold mt-4 w-24" />
+      {children && <div className="mt-4 max-w-3xl text-lg leading-relaxed text-muted-foreground">{children}</div>}
     </header>
   );
 }
@@ -39,8 +39,8 @@ export function Loading({ label = 'Loading...' }: { label?: string }) {
 /** A friendly empty or info state in a dashed box. */
 export function Empty({ icon, title, children, action }: { icon?: ReactNode; title: ReactNode; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed bg-card/50 px-6 py-12 text-center">
-      {icon && <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground [&_svg]:size-6">{icon}</div>}
+    <div className="rounded-2xl border border-dashed bg-card/60 px-6 py-14 text-center">
+      {icon && <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground ring-8 ring-accent/40 [&_svg]:size-6">{icon}</div>}
       <h2 className="text-xl font-semibold">{title}</h2>
       {children && <div className="mx-auto mt-2 max-w-md text-muted-foreground">{children}</div>}
       {action && <div className="mt-5 flex justify-center gap-2">{action}</div>}

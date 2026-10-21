@@ -17,7 +17,7 @@ export function HomebrewBar() {
   const { group } = useScope();
   if (!user || !groups.length) return null;
   return (
-    <div className={cn('mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-2.5',
+    <div className={cn('mb-5 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3',
       group ? 'border-gold-line bg-gold-soft' : 'border-dashed')}>
       <span className="flex items-center gap-1.5 font-semibold"><Flag className="size-4 text-gold-ink" />Homebrew</span>
       <Select value={group?.id ?? STANDARD} onValueChange={(v) => setHomebrew(v === STANDARD ? null : v)}>

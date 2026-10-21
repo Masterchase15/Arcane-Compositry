@@ -51,7 +51,7 @@ function ClassIndex({ classes, subclasses }: { classes: any[]; subclasses: any[]
         Every class available at this table. Open one to see its features, subclasses and how it plays with Arcane Compositry.
       </PageHead>
       <HomebrewBar />
-      <form role="search" onSubmit={(e) => e.preventDefault()} className="mb-4 grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+      <form role="search" onSubmit={(e) => e.preventDefault()} className="surface mb-5 grid gap-4 p-4 sm:p-5 sm:grid-cols-[2fr_1fr_1fr]">
         <Field label="Search" htmlFor="q"><SearchInput id="q" value={f.q} onChange={(v) => set({ q: v })} placeholder="Class, subclass or feature" /></Field>
         <Field label="Mana pool" htmlFor="pool">
           <NativeSelect id="pool" value={f.pool} onChange={(e) => set({ pool: e.target.value })}>
@@ -73,7 +73,7 @@ function ClassIndex({ classes, subclasses }: { classes: any[]; subclasses: any[]
           {shown.map((c) => {
             const subs = subclassesOf(c, subclasses);
             return (
-              <Link key={c.id} to={`/classes/${c.id}`} className="group rounded-xl border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md">
+              <Link key={c.id} to={`/classes/${c.id}`} className="group surface p-5 transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg">
                 <p className="kicker">d{c.hitDie} · {POOL[c.caster].split(' (')[0]}{c.origin === 'file' ? '' : ' · Custom'}{c.hidden ? ' · Hidden from players' : ''}</p>
                 <h3 className="mt-1 text-xl font-semibold group-hover:text-primary">{c.name}</h3>
                 <p className="mt-1 text-muted-foreground">{c.role}</p>
@@ -130,7 +130,7 @@ function ClassPage({ c, subclasses }: { c: any; subclasses: any[] }) {
               <div className="grid gap-3 sm:grid-cols-2">
                 {subclasses.map((s) => (
                   <button key={s.id} type="button" onClick={() => setParams((p) => { p.set('subclass', s.id); return p; }, { replace: true })}
-                    className="group grid gap-1.5 rounded-xl border bg-card p-4 text-left shadow-xs transition hover:border-primary">
+                    className="group grid gap-1.5 surface p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg">
                     <span className="kicker">
                       {s.features.length ? `Features at level${levelsOf(s).length > 1 ? 's' : ''} ${levelsOf(s).join(', ')}` : 'Subclass'}
                       {s.quick || s.origin === 'file' ? '' : ' · Custom'}{s.hidden ? ' · Hidden from players' : ''}

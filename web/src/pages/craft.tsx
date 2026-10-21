@@ -156,7 +156,7 @@ export default function Craft() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <form noValidate onSubmit={(e) => e.preventDefault()} className="space-y-6">
           {characters.length > 0 && (
-            <div className="rounded-xl border bg-card p-4">
+            <div className="surface p-4">
               <Field label="Crafting as" htmlFor="charId" hint="Uses that character's Proficiency Bonus, Invocation Modifier, Mana and Catalyst Throughput.">
                 <NativeSelect id="charId" value={s.charId} onChange={(e) => set({ charId: e.target.value })}>
                   <option value="">No character - I'll type my own bonuses</option>

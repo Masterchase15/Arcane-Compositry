@@ -48,7 +48,7 @@ export default function ComponentsPage() {
       </PageHead>
       <HomebrewBar />
 
-      <form role="search" onSubmit={(e) => e.preventDefault()} className="mb-4 grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+      <form role="search" onSubmit={(e) => e.preventDefault()} className="surface mb-5 grid gap-4 p-4 sm:p-5 sm:grid-cols-[2fr_1fr_1fr]">
         <Field label="Search" htmlFor="q"><SearchInput id="q" value={f.q} onChange={(v) => set({ q: v })} placeholder="Name, behaviour or tag" /></Field>
         <Field label="Kind" htmlFor="kind">
           <NativeSelect id="kind" value={f.kind} onChange={(e) => set({ kind: e.target.value })}><option value="">Physical and Aspectual</option><Options options={COMPONENT_KINDS} /></NativeSelect>
@@ -68,7 +68,7 @@ export default function ComponentsPage() {
           {isDM && group && <Button asChild size="sm" variant="outline"><Link to={`/campaign/${group.id}?tab=spells&list=components`}><Plus />Add a Component</Link></Button>}
         </ResultBar>
         {shown.length ? (
-          <div className="grid gap-2.5">
+          <div className="grid gap-3 lg:grid-cols-2">
             {shown.map((c) => (
               <ListRow key={c.id} onClick={() => set({ component: c.id })}
                 badge={c.kind === 'Physical' ? 'Ph' : 'As'} badgeSub={c.kind} title={c.name}

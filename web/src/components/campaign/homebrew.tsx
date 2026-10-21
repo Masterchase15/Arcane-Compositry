@@ -279,10 +279,10 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         {group ? (
-          <div className="inline-flex flex-wrap gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Which list">
+          <div className="tab-tray inline-flex flex-wrap" role="group" aria-label="Which list">
             {group.map(([id, label]) => (
               <button key={id} type="button" aria-pressed={listName === id} onClick={() => onPickList(id)}
-                className={cn('rounded-md px-3 py-1.5 text-sm font-semibold', listName === id ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground')}>{label}</button>
+                className="tab-pill">{label}</button>
             ))}
           </div>
         ) : <span />}

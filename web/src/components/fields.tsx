@@ -13,9 +13,9 @@ export function Field({ label, htmlFor, hint, error, className, children }: {
 }) {
   return (
     <div className={cn('grid content-start gap-1.5', className)}>
-      {label && <Label htmlFor={htmlFor} className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</Label>}
+      {label && <Label htmlFor={htmlFor} className="text-sm font-semibold text-foreground/75">{label}</Label>}
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-[0.8rem] text-muted-foreground">{hint}</p>}
       {error && <p className="text-sm font-semibold text-destructive" role="alert">{error}</p>}
     </div>
   );
@@ -24,7 +24,7 @@ export function Field({ label, htmlFor, hint, error, className, children }: {
 export function NativeSelect({ className, ...props }: ComponentProps<'select'>) {
   return (
     <select
-      className={cn('h-9 w-full rounded-md border border-input bg-card px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50', className)}
+      className={cn('h-10 w-full rounded-lg border border-input bg-card px-3 py-1 text-[0.95rem] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50', className)}
       {...props}
     />
   );

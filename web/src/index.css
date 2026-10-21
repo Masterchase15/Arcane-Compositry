@@ -12,9 +12,9 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  --background: #f7f5ec;          /* parchment page */
+  --background: #f6f4ec;          /* parchment page */
   --foreground: #1f2d27;          /* ink */
   --card: #ffffff;
   --card-foreground: #1f2d27;
@@ -29,7 +29,7 @@
   --accent: #dde8df;              /* sage */
   --accent-foreground: #24463a;
   --destructive: #b3261e;
-  --border: #d8d5c5;
+  --border: #e0dccb;
   --input: #cfcbb8;
   --ring: #2d4a3e;
 
@@ -41,12 +41,15 @@
   --header: #2d4a3e;              /* table headers, dark boxes */
   --header-foreground: #f4f1e4;
   --ok: #2b6a44;
+  --hp: #b8322a;                  /* the character sheet's Hit Points, Mana and Guard bars */
+  --mana: #2f68ad;
+  --glow: rgb(45 74 62 / 0.10);   /* the soft light at the top of every page */
 }
 
 .dark {
-  --background: #101714;
+  --background: #0e1411;
   --foreground: #e7ede6;
-  --card: #18221d;
+  --card: #151f1a;
   --card-foreground: #e7ede6;
   --popover: #18221d;
   --popover-foreground: #e7ede6;
@@ -59,8 +62,8 @@
   --accent: #22342b;
   --accent-foreground: #cfe3d6;
   --destructive: #f28b82;
-  --border: #2f3f36;
-  --input: #3a4b41;
+  --border: #26332c;
+  --input: #34453b;
   --ring: #8fc4a6;
 
   --gold: #c9a851;
@@ -70,6 +73,9 @@
   --header: #26382f;
   --header-foreground: #e7ede6;
   --ok: #86cfa3;
+  --hp: #ef8a80;
+  --mana: #86b5f0;
+  --glow: rgb(143 196 166 / 0.09);
 }
 
 @theme inline {
@@ -107,17 +113,37 @@
   --color-header: var(--header);
   --color-header-foreground: var(--header-foreground);
   --color-ok: var(--ok);
+  --color-hp: var(--hp);
+  --color-mana: var(--mana);
 }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground font-sans antialiased; }
+  /* Slightly bigger text on tablets and computers (every rem size follows). */
+  html { font-size: 100%; }
+  @media (min-width: 640px) { html { font-size: 106.25%; } }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-image: radial-gradient(1100px 420px at 50% -120px, var(--glow), transparent 70%);
+    background-repeat: no-repeat;
+  }
   h1, h2, h3, h4 { @apply font-serif text-foreground; }
 }
 
 /* A small uppercase gold label above headings ("Dungeon Master", "Saved to your account"). */
 @utility kicker {
   @apply text-xs font-bold uppercase tracking-[0.18em] text-gold-ink;
+}
+/* The usual box: cards, panels, list rows. */
+@utility surface {
+  @apply rounded-xl border bg-card text-card-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_4px_14px_-6px_rgb(0_0_0/0.10)] dark:shadow-[0_1px_2px_rgb(0_0_0/0.3)];
+}
+/* A row of tab buttons in a grey tray (sheet sections, campaign tabs, spell lists). */
+@utility tab-tray {
+  @apply flex gap-1 overflow-x-auto rounded-xl border bg-muted/70 p-1;
+}
+@utility tab-pill {
+  @apply shrink-0 rounded-lg px-3.5 py-2 text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-selected:bg-card aria-selected:text-foreground aria-selected:shadow-sm aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-sm;
 }
 /* The gold rule under page titles. */
 @utility rule-gold {

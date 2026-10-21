@@ -51,17 +51,17 @@ export function ListRow({ badge, badgeSub, title, meta, right, onClick }: {
 }) {
   return (
     <button type="button" onClick={onClick}
-      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-left shadow-xs transition-colors hover:border-primary hover:bg-accent/40">
+      className="surface group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-3.5 py-3 text-left transition hover:-translate-y-px hover:border-primary/60 hover:shadow-md">
       {badge !== undefined
-        ? <span className="flex size-13 flex-col items-center justify-center rounded-lg bg-header text-center font-serif text-lg font-bold leading-none text-header-foreground">
+        ? <span className="flex size-14 flex-col items-center justify-center rounded-xl bg-header text-center font-serif text-xl font-bold leading-none text-header-foreground ring-1 ring-gold/30">
             {badge}{badgeSub && <small className="mt-0.5 font-sans text-[0.55rem] font-bold uppercase tracking-wider opacity-85">{badgeSub}</small>}
           </span>
         : <span />}
       <span className="min-w-0">
-        <strong className="block font-serif text-[1.05rem] leading-snug">{title}</strong>
-        {meta && <span className="text-sm text-muted-foreground">{meta}</span>}
+        <strong className="block font-serif text-lg leading-snug group-hover:text-primary">{title}</strong>
+        {meta && <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">{meta}</span>}
       </span>
-      {right && <span className="whitespace-nowrap text-right font-bold text-primary">{right}</span>}
+      {right && <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold whitespace-nowrap text-accent-foreground tabular-nums">{right}</span>}
     </button>
   );
 }
@@ -69,10 +69,10 @@ export function ListRow({ badge, badgeSub, title, meta, right, onClick }: {
 export function SpellListTabs({ current }: { current: 'codified' | 'compositry' | 'components' }) {
   const tabs = [['codified', 'Codified (D&D)', '/spells/codified'], ['compositry', 'Compositry (custom)', '/spells/compositry'], ['components', 'Physical & Aspectual', '/spells/components']] as const;
   return (
-    <div className="mt-5 inline-flex flex-wrap gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Spell lists">
+    <div className="tab-tray mt-5 inline-flex max-w-full" role="tablist" aria-label="Spell lists">
       {tabs.map(([id, label, to]) => (
         <Link key={id} to={to} role="tab" aria-selected={id === current}
-          className={cn('rounded-md px-3 py-1.5 text-sm font-semibold transition-colors', id === current ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+          className="tab-pill">
           {label}
         </Link>
       ))}

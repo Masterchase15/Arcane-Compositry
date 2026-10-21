@@ -75,7 +75,7 @@ function SignIn() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="rounded-xl border bg-card p-6 shadow-sm">
+      <section className="surface p-6">
         <p className="kicker">{creating ? 'New here?' : 'Welcome back'}</p>
         <h1 className="mt-1 text-3xl font-bold">{creating ? 'Create an account' : 'Sign in'}</h1>
         <hr className="rule-gold mt-3 mb-5 max-w-xs" />
@@ -126,7 +126,7 @@ function SignIn() {
           <h4 className="font-sans text-sm font-bold uppercase tracking-wide text-gold-ink">Why an account?</h4>
           <p className="mt-1">Your characters are saved to your account, so the sheet you edit on your phone at the table is the same one on your desktop at home.</p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
+        <div className="surface p-4">
           <h4 className="font-sans text-sm font-bold uppercase tracking-wide text-gold-ink">No account needed for</h4>
           <ul className="mt-1 list-disc pl-5">
             <li>Reading the <Link className="underline" to="/codex">Field Codex</Link></li>

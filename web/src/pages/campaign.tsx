@@ -25,7 +25,6 @@ import { InitiativeTab } from '@/components/campaign/initiative';
 import { NotesTab } from '@/components/campaign/notes';
 import { HomebrewTab, PartyTab } from '@/components/campaign/party';
 import { useScope } from '@/lib/catalog';
-import { cn } from '@/lib/utils';
 
 // [id, label, who sees it]
 const TABS: [string, string, 'all' | 'dm' | 'player'][] = [
@@ -53,10 +52,10 @@ export default function Campaign() {
   return (
     <>
       <PageHead kicker={isDM ? 'Dungeon Master' : 'Player'} title={group.name} />
-      <div className="mb-5 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="tablist" aria-label="Campaign">
+      <div className="tab-tray mb-6" role="tablist" aria-label="Campaign">
         {tabs.map(([id, label]) => (
           <button key={id} role="tab" aria-selected={id === tab} onClick={() => go({ tab: id })}
-            className={cn('shrink-0 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors', id === tab ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+            className="tab-pill">
             {label}
           </button>
         ))}

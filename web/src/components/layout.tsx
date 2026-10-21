@@ -51,26 +51,26 @@ export function Layout() {
 
 /** The usual page width and padding. */
 export function Main({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <main id="main" tabIndex={-1} className={cn('mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:py-8', className)}>{children}</main>;
+  return <main id="main" tabIndex={-1} className={cn('mx-auto w-full max-w-7xl flex-1 px-4 py-7 outline-none sm:px-6 sm:py-10 lg:px-8', className)}>{children}</main>;
 }
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
-  cn('flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold transition-colors hover:bg-accent hover:text-accent-foreground',
-    isActive ? 'text-primary underline decoration-gold decoration-2 underline-offset-8' : 'text-muted-foreground');
+  cn('flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
+    isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground');
 
 function TopBar() {
   const { theme, toggle } = useTheme();
   return (
-    <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="mx-auto flex h-15 max-w-7xl items-center gap-3 px-4">
+    <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur-md supports-[backdrop-filter]:bg-card/75">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2.5" aria-label="Arcane Compositry home">
-          <span className="flex size-9 items-center justify-center rounded-full border-2 border-gold font-serif text-sm font-bold text-primary" aria-hidden>AC</span>
+          <span className="flex size-10 items-center justify-center rounded-full border-2 border-gold bg-header font-serif text-sm font-bold text-[#ecd98f] shadow-sm" aria-hidden>AC</span>
           <span className="hidden leading-tight sm:block">
             <b className="block font-serif text-base">Arcane Compositry</b>
             <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-gold-ink">Dungeons &amp; Dragons</span>
           </span>
         </Link>
-        <nav className="ml-4 hidden items-center gap-0.5 xl:flex" aria-label="Main">
+        <nav className="ml-6 hidden items-center gap-0.5 xl:flex" aria-label="Main">
           {NAV.filter((n) => n.topbar !== false).map((n) => (
             <NavLink key={n.to} to={n.to} className={navClass} end={n.to === '/'}>{n.label}</NavLink>
           ))}
@@ -83,7 +83,7 @@ function TopBar() {
           <MobileMenu />
         </div>
       </div>
-      <div className="h-0.5 bg-gradient-to-r from-gold to-transparent" aria-hidden />
+      <div className="h-px bg-gradient-to-r from-transparent via-gold/70 to-transparent" aria-hidden />
     </header>
   );
 }
@@ -143,11 +143,11 @@ function MobileMenu() {
 
 function TabBar() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t bg-card xl:hidden" aria-label="Main">
+    <nav className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md xl:hidden" aria-label="Main">
       {NAV.filter((n) => n.tab).map((n) => (
         <NavLink key={n.to} to={n.to}
-          className={({ isActive }) => cn('flex flex-col items-center justify-center gap-0.5 text-[0.7rem] font-semibold', isActive ? 'text-primary' : 'text-muted-foreground')}>
-          <n.icon className="size-5" />{n.label}
+          className={({ isActive }) => cn('group flex flex-col items-center justify-center gap-0.5 text-[0.7rem] font-semibold', isActive ? 'text-primary' : 'text-muted-foreground')}>
+          <span className="flex h-7 w-12 items-center justify-center rounded-full transition-colors group-aria-[current=page]:bg-accent"><n.icon className="size-5" /></span>{n.label}
         </NavLink>
       ))}
     </nav>
@@ -162,8 +162,8 @@ export function CampaignBar({ group }: { group: Group }) {
   const { groups } = useSession();
   const others = groups.filter((g) => g.id !== group.id);
   return (
-    <div className="z-30 border-b-2 border-gold bg-gold-soft sm:sticky sm:top-[3.875rem]">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2">
+    <div className="z-30 border-b border-gold-line bg-gold-soft/95 backdrop-blur-md sm:sticky sm:top-[calc(4rem+2px)]">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
           <Flag className="size-5 text-gold-ink" aria-hidden />
           <div className="leading-tight">

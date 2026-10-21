@@ -50,9 +50,9 @@ function CampaignList() {
         Everything else on the site - the Codex, Spellcrafter, spells and calculators - works without one.
       </PageHead>
       {groups.length ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {groups.map((g) => (
-            <article key={g.id} className="rounded-xl border bg-card p-5 shadow-sm">
+            <article key={g.id} className="surface relative overflow-hidden p-5 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-gold before:to-gold/0">
               <p className="kicker flex items-center gap-1">{g.role === 'dm' ? <><Crown className="size-3.5" />You are the DM</> : 'Player'}</p>
               <h3 className="mt-1 text-xl font-semibold">{g.name}</h3>
               <div className="mt-4 flex flex-wrap gap-2">

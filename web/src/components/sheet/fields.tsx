@@ -52,7 +52,7 @@ export function setPath(obj: any, path: string, value: unknown) {
 /** What a number box holds: '' while empty, otherwise the number. */
 const asTyped = (value: string, isNumber: boolean) => (isNumber ? (value === '' ? '' : Number(value)) : value);
 
-const labelClass = 'text-xs font-bold uppercase tracking-wider text-muted-foreground';
+const labelClass = 'text-sm font-semibold text-foreground/75';
 
 export function TextF({ path, label, type, placeholder, className, min, max }: {
   path: string; label: string; type?: 'number'; placeholder?: string; className?: string; min?: number; max?: number;
@@ -140,7 +140,7 @@ export function Stepper({ path, label, max }: { path: string; label: string; max
   return (
     <div className="flex items-stretch gap-1">
       <Button type="button" variant="outline" size="icon" onClick={() => step(-1)} aria-label={`Decrease ${label}`}><Minus /></Button>
-      <Input type="number" inputMode="numeric" className="min-w-0 text-center font-bold tabular-nums" aria-label={label} value={getPath(c, path) ?? ''}
+      <Input type="number" inputMode="numeric" className="min-w-0 text-center font-serif text-xl font-bold tabular-nums md:text-xl" aria-label={label} value={getPath(c, path) ?? ''}
         onChange={(e) => update((x) => setPath(x, path, asTyped(e.target.value, true)))} />
       <Button type="button" variant="outline" size="icon" onClick={() => step(1)} aria-label={`Increase ${label}`}><Plus /></Button>
     </div>
@@ -183,7 +183,7 @@ export function CellF({ list, index, field, label, options, className }: {
 /** A row in one of the sheet's lists: fields, then the row's buttons underneath. */
 export function ListRow({ children, actions, active }: { children: ReactNode; actions: ReactNode; active?: boolean }) {
   return (
-    <div className={cn('rounded-lg border bg-background/40 p-3', active && 'border-ok/60 bg-ok/5')}>
+    <div className={cn('rounded-xl border bg-background/50 p-3.5', active && 'border-ok/60 bg-ok/5')}>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">{children}</div>
       <div className="mt-2.5 flex flex-wrap items-center gap-2">{actions}</div>
     </div>

@@ -97,7 +97,7 @@ export function HomebrewTab({ group }: { group: Group }) {
       <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
         {lists.map(([to, Icon, label]) => (
           <button key={to} type="button" onClick={() => { setHomebrew(group.id); navigate(to); }}
-            className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition hover:border-primary">
+            className="flex items-center gap-3 surface p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg">
             <span className="flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground"><Icon className="size-5" /></span>
             <b className="font-serif">{label}</b>
           </button>

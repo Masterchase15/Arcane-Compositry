@@ -53,11 +53,18 @@ function CharacterList() {
             <h2 className="flex items-center gap-2 text-2xl font-bold">{g ? <><Flag className="size-5 text-gold-ink" />{g.name}</> : 'Not in a campaign'}</h2>
             {g && <Button asChild variant="ghost" size="sm"><Link to={`/campaign/${g.id}`}>Enter campaign</Link></Button>}
           </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {list.map((c) => (
-              <article key={c.id} className="rounded-xl border bg-card p-5 shadow-sm">
-                <p className="kicker">Level {c.level} {c.className || 'Adventurer'}</p>
-                <h3 className="mt-1 text-xl font-semibold">{c.name}</h3>
+              <article key={c.id} className="surface p-5">
+                <div className="flex items-center gap-3.5">
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-header font-serif text-lg font-bold text-[#ecd98f] ring-1 ring-gold/40" aria-hidden>
+                    {(c.name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('')}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="kicker">Level {c.level} {c.className || 'Adventurer'}</p>
+                    <h3 className="mt-0.5 truncate text-xl font-semibold">{c.name}</h3>
+                  </div>
+                </div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {[c.species, c.subclass].filter(Boolean).join(' · ') || 'No species set'}<br />
                   Last saved {new Date(c.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

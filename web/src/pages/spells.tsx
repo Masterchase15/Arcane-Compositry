@@ -65,7 +65,7 @@ export default function Spells() {
       </PageHead>
       <HomebrewBar />
 
-      <form role="search" onSubmit={(e) => e.preventDefault()} className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+      <form role="search" onSubmit={(e) => e.preventDefault()} className="surface mb-5 grid gap-4 p-4 sm:p-5 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         <Field label="Search" htmlFor="q"><SearchInput id="q" value={f.q} onChange={(v) => set({ q: v })} placeholder="Name, effect or tag" /></Field>
         <Field label="Class" htmlFor="class">
           <NativeSelect id="class" value={f.class} onChange={(e) => set({ class: e.target.value })}><option value="">Any class</option><Options options={CLASS_NAMES} /></NativeSelect>
@@ -95,7 +95,7 @@ export default function Spells() {
           {isDM && group && <Button asChild size="sm" variant="outline"><Link to={`/campaign/${group.id}?tab=spells&list=${listName}`}><Plus />Add a spell</Link></Button>}
         </ResultBar>
         {shown.length ? (
-          <div className="grid gap-2.5">
+          <div className="grid gap-3 lg:grid-cols-2">
             {shown.map((s) => {
               const allowed = char ? classAllowed(s, char.className) : null;
               return (

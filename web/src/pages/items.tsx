@@ -49,7 +49,7 @@ export default function Items() {
       </PageHead>
       <HomebrewBar />
 
-      <form role="search" onSubmit={(e) => e.preventDefault()} className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+      <form role="search" onSubmit={(e) => e.preventDefault()} className="surface mb-5 grid gap-4 p-4 sm:p-5 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         <Field label="Search" htmlFor="q"><SearchInput id="q" value={f.q} onChange={(v) => set({ q: v })} placeholder="Name, effect, property or tag" /></Field>
         <Field label="Category" htmlFor="category">
           <NativeSelect id="category" value={f.category} onChange={(e) => set({ category: e.target.value })}><option value="">Any category</option><Options options={ITEM_CATEGORIES} /></NativeSelect>
@@ -70,7 +70,7 @@ export default function Items() {
           {isDM && group && <Button asChild size="sm" variant="outline"><Link to={`/campaign/${group.id}?tab=items`}><Plus />Add an item</Link></Button>}
         </ResultBar>
         {shown.length ? (
-          <div className="grid gap-2.5">
+          <div className="grid gap-3 lg:grid-cols-2">
             {shown.map((it) => (
               <ListRow key={it.id} onClick={() => set({ item: it.id })}
                 badge={BADGE[it.category] || 'It'} badgeSub={it.category.split(' ')[0]} title={it.name}
