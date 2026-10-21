@@ -1,9 +1,17 @@
-# Dungeons & Dragons: Arcane Compositry - companion site
+# Arcane Compositry - D&D campaign companion
 
-A companion website for the Arcane Compositry expansion: the full rules codex,
-a Spellcrafter and calculators for every formula, searchable indexes for
-spells, items and classes, saved character sheets, and DM notebooks. Works on
-desktop and phones and can be installed as a web app.
+Everything a Dungeons & Dragons campaign needs, for players and DMs:
+
+- **Players:** saved character sheets that do the maths, the campaign's party
+  and homebrew, and searchable spells, items and classes.
+- **DMs:** campaigns with invite codes, homebrew without code (hidden until you
+  publish it), an initiative tracker, an NPC and enemy roster, and private
+  session notes and lore.
+- **Built-in magic:** the Arcane Compositry expansion - the full rules codex, a
+  Spellcrafter and a calculator for every formula.
+
+Several campaigns can share one site. Works on desktop and phones and can be
+installed as a web app.
 
 ## Start it
 

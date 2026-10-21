@@ -1,7 +1,7 @@
 {
-  "name": "Dungeons & Dragons: Arcane Compositry",
+  "name": "Arcane Compositry - D&D campaign companion",
   "short_name": "Compositry",
-  "description": "Rules codex, spellcrafting calculators, spell indexes and character sheets for the Arcane Compositry expansion.",
+  "description": "A D&D campaign companion for players and DMs: character sheets, campaign hub, homebrew, initiative tracker, notes and the Arcane Compositry magic system.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

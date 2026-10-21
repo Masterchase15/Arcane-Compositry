@@ -1,6 +1,6 @@
 /**
- * pages/home.tsx - the landing page (/): what Arcane Compositry is, what this
- * site does for players and DMs, and how to get started. Signed-in people also
+ * pages/home.tsx - the landing page (/): a campaign companion for players and
+ * DMs, the Arcane Compositry magic built into it, and how to get started. Signed-in people also
  * get a "pick up where you left off" strip with their characters and campaigns.
  *
  * The words live in the arrays below (STEPS, PLAYER_TOOLS, DM_TOOLS, START, FAQ),
@@ -9,7 +9,7 @@
 import { Link, useNavigate } from 'react-router';
 import {
   ArrowRight, BookOpen, Calculator, ChevronRight, Compass, Crown, Flag, Flame, Gem, KeyRound, Layers, NotebookPen, ScrollText,
-  Shield, Smartphone, Sparkles, Swords, Sword, UserPlus, Users, Zap, type LucideIcon,
+  Shield, Skull, Smartphone, Sparkles, Swords, Sword, UserPlus, Users, Zap, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BlurFade } from '@/components/ui/blur-fade';
@@ -29,28 +29,29 @@ const STEPS: { icon: LucideIcon; label: string; question: string; text: string; 
 ];
 
 const PLAYER_TOOLS: { to: string; icon: LucideIcon; title: string; text: string }[] = [
-  { to: '/craft', icon: Sparkles, title: 'Spellcrafter', text: 'Pick Components, a Form and a Potency. Mana, damage dice, attack bonus and Save DC are worked out as you go.' },
-  { to: '/characters', icon: Users, title: 'Character sheets', text: 'The full Arcane Compositry sheet, saved to your account. Track HP, Mana, Guard and Momentum during play.' },
-  { to: '/spells', icon: ScrollText, title: 'Spells, items & classes', text: 'Every spell, weapon and class at the table. Filter, read the details, add them to a character in one tap.' },
-  { to: '/codex', icon: BookOpen, title: 'Field Codex & calculators', text: 'The complete rules, chapter by chapter, with a live calculator next to every formula.' },
+  { to: '/characters', icon: Users, title: 'Character sheets', text: 'A full sheet saved to your account and open on any device. HP, Mana, Guard and Momentum update as you play.' },
+  { to: '/campaigns', icon: Flag, title: 'Your campaign', text: "Join with your DM's invite code to see the party and the campaign's own spells, items and classes." },
+  { to: '/craft', icon: Sparkles, title: 'Spellcrafter', text: 'Build a spell from parts. Mana, damage dice, attack bonus and Save DC are worked out for you.' },
+  { to: '/codex', icon: BookOpen, title: 'Rules library', text: 'The full rules codex, every spell, item and class, and a calculator for every formula.' },
 ];
 
 const DM_TOOLS: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: KeyRound, title: 'Your own campaign', text: 'Start a campaign, share its invite code, and see every character in the party.' },
-  { icon: Sword, title: 'Homebrew without code', text: 'Add spells, items, classes and Components. Keep them hidden until you choose to publish them.' },
+  { icon: KeyRound, title: 'Run your campaign', text: 'Invite players with a code, see every sheet in the party, and step in to fix a character when needed.' },
+  { icon: Sword, title: 'Homebrew without code', text: 'Add spells, items, classes and Components. Keep them hidden until you choose to reveal them.' },
   { icon: Swords, title: 'Initiative tracker', text: 'Turn order, HP and Guard for every combatant, with your NPC and enemy stat blocks a click away.' },
-  { icon: NotebookPen, title: 'Notes and lore', text: 'Private session notes and a lore notebook, shared with your co-DMs and saved as you type.' },
+  { icon: Skull, title: 'NPC and enemy roster', text: 'Your own stat blocks, never shown to players.' },
+  { icon: NotebookPen, title: 'Session notes and lore', text: 'Private notebooks, shared with your co-DMs and saved as you type.' },
 ];
 
 const START: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: UserPlus, title: 'Create an account', text: 'Use the invite code from your DM. It puts you straight into their campaign.' },
-  { icon: Compass, title: 'Build your character', text: 'The character guide walks through it: class, abilities, Catalyst and Tendril.' },
-  { icon: Sparkles, title: 'Compose your first spell', text: 'Open the Spellcrafter, describe the magic, and add it to your sheet.' },
+  { icon: UserPlus, title: 'Create an account', text: "Players: use your DM's invite code and you land in their campaign. DMs: sign up and start one." },
+  { icon: Compass, title: 'Build your character', text: 'The character guide walks through it step by step, from class to Catalyst.' },
+  { icon: Swords, title: 'Play', text: 'Keep the sheet open at the table. Your DM runs combat, notes and homebrew from the campaign hub.' },
 ];
 
 const FAQ: { icon: LucideIcon; q: string; a: string }[] = [
-  { icon: BookOpen, q: 'Do I need to know the rules first?', a: 'No. Read the two-minute Quick Start, then let the Spellcrafter do the maths while you learn.' },
-  { icon: Shield, q: 'Does it replace normal D&D spells?', a: 'It sits beside them. Familiar spells are on the Codified list with a Mana cost, so casters keep what they know.' },
+  { icon: Users, q: 'Can one site hold several campaigns?', a: 'Yes. Each campaign has its own DM, party, homebrew and notes, and one account can play in several.' },
+  { icon: BookOpen, q: 'Do I need to know Arcane Compositry first?', a: 'No. Read the two-minute Quick Start, then let the Spellcrafter and the sheet do the maths while you learn.' },
   { icon: Smartphone, q: 'Can I use it at the table on my phone?', a: 'Yes. Every page works on a phone, and you can install the site as an app from your browser menu.' },
 ];
 
@@ -70,25 +71,25 @@ export default function Home() {
         </svg>
         <BorderBeam size={140} duration={9} colorFrom="#ecd98f" colorTo="#8fc4a6" />
         <div className="relative max-w-3xl">
-          <BlurFade delay={0.05}><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#e5cf85]">The companion site for a Dungeons &amp; Dragons magic expansion</p></BlurFade>
-          <BlurFade delay={0.12}><h1 className="mt-4 text-4xl font-bold tracking-tight text-header-foreground sm:text-6xl">Compose your magic.<br />Don't pick it from a list.</h1></BlurFade>
+          <BlurFade delay={0.05}><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#e5cf85]">Dungeons &amp; Dragons campaign companion</p></BlurFade>
+          <BlurFade delay={0.12}><h1 className="mt-4 text-4xl font-bold tracking-tight text-header-foreground sm:text-6xl">Everything your campaign needs, in one place.</h1></BlurFade>
           <BlurFade delay={0.2}>
             <p className="mt-6 text-lg leading-relaxed text-header-foreground/80 sm:text-xl">
-              <b className="font-semibold text-header-foreground">Arcane Compositry</b> replaces fixed spell lists with spells you build at the table:
-              choose what the magic is made of, the shape it takes and how hard you push it, then pay the Mana.
-              This site holds the rules, does the maths, keeps your character sheet, and gives your DM a home for the campaign.
+              Players get character sheets that do the maths, the rules at their fingertips and a place to follow the party.
+              DMs get a campaign hub: invites, homebrew, an initiative tracker, an enemy roster and private notes.
+              And it all runs on <b className="font-semibold text-header-foreground">Arcane Compositry</b>, a magic system where you build spells instead of picking them from a list.
             </p>
           </BlurFade>
           <BlurFade delay={0.28} className="mt-9 flex flex-wrap items-center gap-3">
-            <ShimmerButton onClick={() => navigate('/craft')} background="#ecd98f" shimmerColor="#ffffff" borderRadius="6px"
+            <ShimmerButton onClick={() => navigate(user ? '/campaigns' : '/account')} background="#ecd98f" shimmerColor="#ffffff" borderRadius="6px"
               className="h-11 px-5 text-sm font-semibold text-[#1b2a22] [&_svg]:size-4">
-              <span className="flex items-center gap-2"><Sparkles />Try the Spellcrafter</span>
+              <span className="flex items-center gap-2">{user ? <><Flag />My campaigns</> : <><UserPlus />Get started</>}</span>
             </ShimmerButton>
             {user
               ? <Button asChild size="lg" variant="outline" className={cta}><Link to="/characters"><Users />My characters</Link></Button>
-              : <Button asChild size="lg" variant="outline" className={cta}><Link to="/account"><UserPlus />Create an account</Link></Button>}
+              : <Button asChild size="lg" variant="outline" className={cta}><Link to="/craft"><Sparkles />Try the Spellcrafter</Link></Button>}
             <Button asChild size="lg" variant="ghost" className="text-header-foreground/80 hover:bg-white/10 hover:text-header-foreground">
-              <Link to="/codex/quick-start">Read the 2-minute Quick Start<ArrowRight /></Link>
+              <a href="#features">See what it does<ArrowRight /></a>
             </Button>
           </BlurFade>
         </div>
@@ -96,41 +97,8 @@ export default function Home() {
 
       {user && <ContinueStrip />}
 
-      {/* ── What is Arcane Compositry? ───────────────────────────────────── */}
-      <Section kicker="How the magic works" title="Every spell answers four questions"
-        intro="Instead of memorising a list, a Compositor builds each spell from parts. The rules set its power; you decide how it looks, moves and sounds.">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {STEPS.map((s, i) => (
-            <BlurFade key={s.label} delay={0.05 * i} inView className="h-full">
-              <div className="surface relative h-full p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="flex size-10 items-center justify-center rounded-md border bg-muted/60 text-primary"><s.icon className="size-5" /></span>
-                  <span className="font-serif text-3xl font-bold text-gold/50 tabular-nums" aria-hidden>{i + 1}</span>
-                </div>
-                <h3 className="text-lg font-semibold">{s.label}</h3>
-                <p className="font-medium text-gold-ink">{s.question}</p>
-                <p className="mt-2 text-[0.95rem] leading-relaxed text-muted-foreground">{s.text}</p>
-                <div className="mt-4 flex flex-wrap gap-1.5">
-                  {s.examples.map((x) => <span key={x} className="rounded-md border bg-muted/50 px-2 py-0.5 text-xs font-medium">{x}</span>)}
-                </div>
-              </div>
-            </BlurFade>
-          ))}
-        </div>
-        <BlurFade inView>
-          <figure className="surface mt-4 flex flex-col gap-4 border-l-4 border-l-gold p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <figcaption className="kicker mb-1.5">Example: Geo + Fire Projectile, Potency III</figcaption>
-              <blockquote className="font-serif text-lg italic">"I condense a fist-sized chunk of molten stone and fire it at the enemy."</blockquote>
-              <p className="mt-1 text-sm text-muted-foreground">Potency III gives the starting Mana and damage; the Geo + Fire Composite adds a little to the cost.</p>
-            </div>
-            <Button asChild variant="outline" className="shrink-0"><Link to="/craft">Build it yourself<ArrowRight /></Link></Button>
-          </figure>
-        </BlurFade>
-      </Section>
-
       {/* ── What the site does ───────────────────────────────────────────── */}
-      <Section kicker="What you can do here" title="Everything your table needs, in one place">
+      <Section id="features" kicker="What you can do here" title="One home for the players and the DM">
         <div className="grid gap-8 lg:grid-cols-[3fr_2fr]">
           <div>
             <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold"><Users className="size-5 text-primary" />For players</h3>
@@ -171,6 +139,39 @@ export default function Home() {
             </BlurFade>
           </div>
         </div>
+      </Section>
+
+      {/* ── The magic system built in ───────────────────────────────────── */}
+      <Section kicker="Built-in magic system" title="Arcane Compositry: every spell answers four questions"
+        intro="Instead of memorising a spell list, a Compositor builds each spell from parts. The rules set its power; you decide how it looks, moves and sounds. Familiar D&D spells are here too, with their Mana cost.">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {STEPS.map((s, i) => (
+            <BlurFade key={s.label} delay={0.05 * i} inView className="h-full">
+              <div className="surface relative h-full p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="flex size-10 items-center justify-center rounded-md border bg-muted/60 text-primary"><s.icon className="size-5" /></span>
+                  <span className="font-serif text-3xl font-bold text-gold/50 tabular-nums" aria-hidden>{i + 1}</span>
+                </div>
+                <h3 className="text-lg font-semibold">{s.label}</h3>
+                <p className="font-medium text-gold-ink">{s.question}</p>
+                <p className="mt-2 text-[0.95rem] leading-relaxed text-muted-foreground">{s.text}</p>
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {s.examples.map((x) => <span key={x} className="rounded-md border bg-muted/50 px-2 py-0.5 text-xs font-medium">{x}</span>)}
+                </div>
+              </div>
+            </BlurFade>
+          ))}
+        </div>
+        <BlurFade inView>
+          <figure className="surface mt-4 flex flex-col gap-4 border-l-4 border-l-gold p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <figcaption className="kicker mb-1.5">Example: Geo + Fire Projectile, Potency III</figcaption>
+              <blockquote className="font-serif text-lg italic">"I condense a fist-sized chunk of molten stone and fire it at the enemy."</blockquote>
+              <p className="mt-1 text-sm text-muted-foreground">Potency III gives the starting Mana and damage; the Geo + Fire Composite adds a little to the cost.</p>
+            </div>
+            <Button asChild variant="outline" className="shrink-0"><Link to="/craft">Build it yourself<ArrowRight /></Link></Button>
+          </figure>
+        </BlurFade>
       </Section>
 
       {/* ── Getting started ──────────────────────────────────────────────── */}
@@ -221,9 +222,9 @@ export default function Home() {
   );
 }
 
-function Section({ kicker, title, intro, children }: { kicker: string; title: string; intro?: string; children: React.ReactNode }) {
+function Section({ id, kicker, title, intro, children }: { id?: string; kicker: string; title: string; intro?: string; children: React.ReactNode }) {
   return (
-    <section className="mt-14 first:mt-0">
+    <section id={id} className="mt-14 scroll-mt-24 first:mt-0">
       <p className="kicker mb-2">{kicker}</p>
       <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
       {intro && <p className="mt-2 max-w-3xl text-lg leading-relaxed text-muted-foreground">{intro}</p>}
