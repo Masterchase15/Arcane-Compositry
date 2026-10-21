@@ -96,7 +96,7 @@ export function useApi<T = any>(path: string | null): Loaded<T> {
   return useLoad<T>(() => (path ? api<T>('GET', path) : Promise.resolve(undefined as T)), [path, group?.id]);
 }
 
-function useList<T>(path: string, pick: (r: any) => T): Loaded<T> {
+export function useList<T>(path: string, pick: (r: any) => T): Loaded<T> {
   const { group } = useScope();
   const v = useSyncExternalStore(subscribe, () => version);
   return useLoad<T>(() => cached<any>(group?.id ?? null, path).then(pick), [path, group?.id, v]);
@@ -109,6 +109,14 @@ export const useClasses = () => useList<any[]>('/classes', (r) => r.classes);
 export const useComponents = () => useList<any[]>('/components', (r) => r.components);
 export const useSubclasses = () => useList<any[]>('/subclasses', (r) => r.subclasses);
 export const useNpcs = () => useList<any[]>('/npcs', (r) => r.npcs);
+
+/** Any of the homebrew-editable lists by name (the campaign hub's editors use this). */
+const LIST_SOURCES: Record<string, [string, (r: any) => any[]]> = {
+  codified: ['/spells', (r) => r.codified], compositry: ['/spells', (r) => r.compositry],
+  components: ['/components', (r) => r.components], items: ['/items', (r) => r.items],
+  classes: ['/classes', (r) => r.classes], subclasses: ['/subclasses', (r) => r.subclasses], npcs: ['/npcs', (r) => r.npcs],
+};
+export const useCatalogList = (listName: string) => useList<any[]>(...LIST_SOURCES[listName]);
 
 /**
  * Every subclass that belongs to a class: the ones from the Subclasses list whose
