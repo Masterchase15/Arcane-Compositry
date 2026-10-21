@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -9,16 +13,25 @@
     "noEmit": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "resolveJsonModule": true,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./web/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@/*": [
+        "./web/src/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
+      ]
     },
-    "types": ["vite/client"]
+    "types": [
+      "vite/client"
+    ],
+    "esModuleInterop": true
   },
-  "include": ["web/src", "shared", "vite.config.ts"]
+  "include": [
+    "web/src",
+    "vite.config.ts"
+  ]
 }

@@ -16,6 +16,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { CampaignBar, Layout, Main } from '@/components/layout';
 import { ConfirmProvider } from '@/components/confirm';
+import { AskForEmail } from '@/components/ask-for-email';
 import { Empty, Loading } from '@/components/page';
 import { GroupScope } from '@/lib/catalog';
 import { SessionProvider, useSession } from '@/lib/session';
@@ -85,6 +86,7 @@ export function App() {
               <Route path="campaign/:id" element={<CampaignScope />} />
             </Route>
           </Routes>
+          <AskForEmail />
           <Toaster richColors closeButton />
         </ConfirmProvider>
       </TooltipProvider>

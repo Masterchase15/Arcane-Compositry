@@ -11,6 +11,7 @@
     "dev:web": "vite",
     "build": "vite build",
     "typecheck": "tsc",
+    "js-types": "node scripts/js-types.js",
     "make-admin": "node scripts/make-admin.js",
     "check-data": "node scripts/check-spells.js",
     "check-spells": "node scripts/check-spells.js",

@@ -11,7 +11,7 @@ import { PageHead } from '@/components/page';
 import { RichHtml } from '@/components/rich-html';
 
 export default function Guide() {
-  const steps = guideSteps();
+  const steps: { title: string; html: string }[] = guideSteps();
   const start = <Button asChild><Link to="/characters/new"><Plus />Start a character</Link></Button>;
   return (
     <>

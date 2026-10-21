@@ -12,7 +12,7 @@ import { Calculator } from '@/components/calculator';
 const slug = (g: string) => `group-${g.replace(/\W+/g, '-')}`;
 
 export default function Tools() {
-  const groups = [...new Set(CALCULATORS.map((c: any) => c.group as string))];
+  const groups: string[] = [...new Set<string>(CALCULATORS.map((c: any) => c.group))];
   return (
     <>
       <PageHead kicker="Every formula, interactive" title="Calculators">
