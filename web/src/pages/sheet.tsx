@@ -23,6 +23,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState, Loading, RequireUser } from '@/components/page';
 import { SheetContext, Stepper, type Sheet as SheetState } from '@/components/sheet/fields';
+import { TabBar } from '@/components/tab-bar';
+import { RollingNumber } from '@/components/panel';
 import { CoreTab } from '@/components/sheet/core-tab';
 import { ArcaneTab } from '@/components/sheet/arcane-tab';
 import { FeaturesTab } from '@/components/sheet/features-tab';
@@ -154,22 +156,16 @@ function Sheet({ loaded }: { loaded: Loaded }) {
         <div className="surface grid grid-cols-2 gap-px overflow-hidden bg-border p-0">
           {([['Armor Class', d.acTotal], ['Prof. bonus', F.signed(d.profBonus)], ['Save DC', d.saveDC], ['Momentum', `d${c.momentum.die}`]] as const).map(([label, value]) => (
             <div key={label} className="flex flex-col items-center justify-center bg-card px-2 py-3 text-center">
-              <span className="font-serif text-2xl font-bold tabular-nums">{value}</span>
+              <span className="font-serif text-2xl font-bold tabular-nums"><RollingNumber value={value} /></span>
               <span className="text-xs font-semibold text-muted-foreground">{label}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="sticky top-[calc(4rem+1px)] z-20 -mx-4 mb-6 bg-background/85 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="tab-tray" role="tablist" aria-label="Sheet sections">
-          {TABS.map((t) => (
-            <button key={t.id} role="tab" aria-selected={t.id === tab.id} className="tab-pill flex-1"
-              onClick={() => setParams((p) => { p.set('tab', t.id); return p; }, { replace: true })}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+      <div className="sticky top-[calc(4rem+1px)] z-20 -mx-4 mb-6 bg-background/85 px-4 pt-1 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <TabBar label="Sheet sections" current={tab.id} items={TABS}
+          onSelect={(id) => setParams((p) => { p.set('tab', id); return p; }, { replace: true })} />
       </div>
       <div role="tabpanel"><tab.Tab /></div>
     </SheetContext.Provider>

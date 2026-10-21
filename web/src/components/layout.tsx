@@ -6,7 +6,8 @@
  *  Add it to NAV below (and its route in App.tsx). `tab: true` also puts it in
  *  the phone bottom bar - keep that to 5.
  */
-import { Link, NavLink, Outlet, useNavigate } from 'react-router';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import {
   ArrowLeft, BookOpen, Calculator, Compass, Crown, Flag, House, LogOut, Menu, Moon, ScrollText,
@@ -49,13 +50,20 @@ export function Layout() {
   );
 }
 
-/** The usual page width and padding. */
+/** The usual page width and padding. Each page fades in when you arrive on it. */
 export function Main({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <main id="main" tabIndex={-1} className={cn('mx-auto w-full max-w-7xl flex-1 px-4 py-7 outline-none sm:px-6 sm:py-10 lg:px-8', className)}>{children}</main>;
+  const { pathname } = useLocation();
+  return (
+    <main id="main" tabIndex={-1} className={cn('mx-auto w-full max-w-7xl flex-1 px-4 py-7 outline-none sm:px-6 sm:py-10 lg:px-8', className)}>
+      <motion.div key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
+        {children}
+      </motion.div>
+    </main>
+  );
 }
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
-  cn('flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
+  cn('flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
     isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground');
 
 function TopBar() {
@@ -65,12 +73,12 @@ function TopBar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2.5" aria-label="Arcane Compositry home">
           <span className="flex size-10 items-center justify-center rounded-full border-2 border-gold bg-header font-serif text-sm font-bold text-[#ecd98f] shadow-sm" aria-hidden>AC</span>
-          <span className="hidden leading-tight sm:block">
+          <span className="hidden leading-tight whitespace-nowrap sm:block xl:hidden 2xl:block">
             <b className="block font-serif text-base">Arcane Compositry</b>
             <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-gold-ink">Dungeons &amp; Dragons</span>
           </span>
         </Link>
-        <nav className="ml-6 hidden items-center gap-0.5 xl:flex" aria-label="Main">
+        <nav className="ml-4 hidden items-center gap-0.5 xl:flex 2xl:ml-8" aria-label="Main">
           {NAV.filter((n) => n.topbar !== false).map((n) => (
             <NavLink key={n.to} to={n.to} className={navClass} end={n.to === '/'}>{n.label}</NavLink>
           ))}
@@ -147,7 +155,7 @@ function TabBar() {
       {NAV.filter((n) => n.tab).map((n) => (
         <NavLink key={n.to} to={n.to}
           className={({ isActive }) => cn('group flex flex-col items-center justify-center gap-0.5 text-[0.7rem] font-semibold', isActive ? 'text-primary' : 'text-muted-foreground')}>
-          <span className="flex h-7 w-12 items-center justify-center rounded-full transition-colors group-aria-[current=page]:bg-accent"><n.icon className="size-5" /></span>{n.label}
+          <span className="flex h-7 w-12 items-center justify-center rounded-md transition-colors group-aria-[current=page]:bg-accent"><n.icon className="size-5" /></span>{n.label}
         </NavLink>
       ))}
     </nav>

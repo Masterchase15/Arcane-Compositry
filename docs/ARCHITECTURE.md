@@ -53,6 +53,8 @@ For production, `npm run build` makes `dist/` and `node server.js` serves it on
 | `components/campaign/`     | The campaign hub's tabs: party, homebrew editors, initiative, group, notes. |
 | `components/details.tsx`   | Details pop-ups (spell, item, Component, subclass, NPC, character) and the pick-list. |
 | `components/ui/`           | shadcn/ui components (buttons, dialogs, menus...) - copied in, yours to edit. |
+| `components/ui/` (Magic UI) | The animated pieces from [Magic UI](https://magicui.design): `border-beam`, `blur-fade`, `dot-pattern`, `magic-card`, `number-ticker`, `shimmer-button`. They use [Motion](https://motion.dev). |
+| `components/tab-bar.tsx`   | Underlined tabs with the sliding gold line (sheet, campaign hub, spell lists). |
 | `lib/api.ts`               | Talking to the server. |
 | `lib/session.tsx`          | Who is signed in, their campaigns, the Homebrew filter. |
 | `lib/catalog.tsx`          | Which campaign a page uses (`<GroupScope>`), and the cached list hooks. |
@@ -143,10 +145,17 @@ Write it as a component in `web/src/components/campaign/`, then add it to
 `npx shadcn@latest add <name>` puts it in `web/src/components/ui/`. Check its
 first lines import `cn` from `@/lib/utils`.
 
+A Magic UI component is added the same way:
+`npx shadcn@latest add "https://magicui.design/r/<name>.json"`. If it imports
+`next-themes`, switch it to `useTheme` from `@/lib/theme` (see `magic-card.tsx`).
+Animations are switched off for anyone whose device asks for reduced motion
+(`<MotionConfig reducedMotion="user">` in `App.tsx`).
+
 ### Change the look
 The colour tokens at the top of `web/src/index.css` (taken from the codex PDF)
 drive every component, in light and dark. Change a token and every page
-follows. Fonts are loaded in `web/index.html`.
+follows. `--radius` sets how round the corners are. Fonts (Geist for text,
+Lora for titles) are loaded in `web/index.html`.
 
 ## Tests
 

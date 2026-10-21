@@ -12,7 +12,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.375rem;             /* corners: crisp, 6px on cards and buttons */
 
   --background: #f6f4ec;          /* parchment page */
   --foreground: #1f2d27;          /* ink */
@@ -79,14 +79,17 @@
 }
 
 @theme inline {
-  --font-sans: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
 
+  /* Every corner size, kept small (rounded-xl and up included). */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 4px);
+  --radius-3xl: calc(var(--radius) + 6px);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -115,6 +118,27 @@
   --color-ok: var(--ok);
   --color-hp: var(--hp);
   --color-mana: var(--mana);
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }
 }
 
 @layer base {
@@ -136,14 +160,14 @@
 }
 /* The usual box: cards, panels, list rows. */
 @utility surface {
-  @apply rounded-xl border bg-card text-card-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_4px_14px_-6px_rgb(0_0_0/0.10)] dark:shadow-[0_1px_2px_rgb(0_0_0/0.3)];
+  @apply rounded-lg border bg-card text-card-foreground shadow-[0_1px_0_rgb(0_0_0/0.03),0_2px_8px_-4px_rgb(0_0_0/0.08)] dark:shadow-none;
 }
-/* A row of tab buttons in a grey tray (sheet sections, campaign tabs, spell lists). */
+/* A small segmented switch (homebrew lists, encounters). Page-level tabs use <TabBar> (components/tab-bar.tsx). */
 @utility tab-tray {
-  @apply flex gap-1 overflow-x-auto rounded-xl border bg-muted/70 p-1;
+  @apply flex gap-0.5 overflow-x-auto rounded-md border bg-muted/60 p-0.5;
 }
 @utility tab-pill {
-  @apply shrink-0 rounded-lg px-3.5 py-2 text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-selected:bg-card aria-selected:text-foreground aria-selected:shadow-sm aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-sm;
+  @apply shrink-0 rounded-[calc(var(--radius)-2px)] px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-selected:bg-card aria-selected:text-foreground aria-selected:shadow-xs aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs;
 }
 /* The gold rule under page titles. */
 @utility rule-gold {
@@ -197,12 +221,12 @@
 
   .prose-ac .steps { @apply grid list-none grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5 p-0; }
   .prose-ac .steps li { @apply grid grid-cols-[34px_1fr] gap-3; }
-  .prose-ac .steps .n { @apply flex size-[34px] items-center justify-center rounded-full bg-header font-serif font-bold text-header-foreground; }
+  .prose-ac .steps .n { @apply flex size-[34px] items-center justify-center rounded-md bg-header font-serif font-bold text-header-foreground; }
   .prose-ac .steps h4 { @apply mt-1 mb-0.5; }
   .prose-ac .steps p { @apply m-0 text-[0.95rem]; }
 
   .prose-ac .chips { @apply flex flex-wrap gap-2; }
-  .prose-ac .chip { @apply inline-flex items-center rounded-full border border-primary/30 bg-accent px-2.5 py-0.5 text-sm font-semibold text-accent-foreground; }
+  .prose-ac .chip { @apply inline-flex items-center rounded-md border border-primary/30 bg-accent px-2.5 py-0.5 text-sm font-semibold text-accent-foreground; }
   .prose-ac .chip.gold { @apply border-gold-line bg-gold-soft text-gold-ink; }
 
   .prose-ac .stat-grid { @apply my-3 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-px overflow-hidden rounded-lg border bg-border; }

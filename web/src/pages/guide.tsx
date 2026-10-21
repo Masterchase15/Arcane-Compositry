@@ -33,7 +33,7 @@ export default function Guide() {
           {steps.map((s, i) => (
             <section key={i} id={`step-${i}`} className="scroll-mt-24">
               <h2 className="mb-3 flex items-center gap-3 text-2xl font-bold">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-header font-serif text-base text-header-foreground">{i + 1}</span>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-header font-serif text-base text-header-foreground">{i + 1}</span>
                 {s.title}
               </h2>
               <RichHtml html={s.html} />

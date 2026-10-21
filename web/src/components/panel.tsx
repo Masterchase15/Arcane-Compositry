@@ -3,6 +3,7 @@
  * printed character sheet. Used by forms, the sheet and the Spellcrafter.
  */
 import type { ReactNode } from 'react';
+import { NumberTicker } from '@/components/ui/number-ticker';
 import { cn } from '@/lib/utils';
 
 export function Panel({ title, actions, className, bodyClassName, children }: {
@@ -26,8 +27,15 @@ export function ResultTile({ label, value, note }: { label: string; value: React
   return (
     <div className="rounded-xl border border-primary/15 bg-accent px-4 py-3 text-accent-foreground">
       <span className="text-sm font-semibold opacity-85">{label}</span>
-      <span className="block font-serif text-3xl font-bold leading-tight tabular-nums">{value}</span>
+      <span className="block font-serif text-3xl font-bold leading-tight tabular-nums"><RollingNumber value={value} /></span>
       {note && <span className="text-sm">{note}</span>}
     </div>
   );
+}
+
+/** A whole number rolls smoothly to its new value when it changes; anything else ("6d8", "+3") is shown as it is. */
+export function RollingNumber({ value }: { value: ReactNode }) {
+  const n = typeof value === 'number' && Number.isInteger(value) ? value
+    : typeof value === 'string' && /^-?\d+$/.test(value) ? Number(value) : null;
+  return n === null ? <>{value}</> : <NumberTicker value={n} startValue={n} />;
 }

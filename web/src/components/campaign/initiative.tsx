@@ -351,7 +351,7 @@ function CombatantCard({ c, position, isUp, mutate, onDetails }: {
   return (
     <article className={cn('surface p-3', isUp && 'border-2 border-gold bg-gold-soft/40', c.dead && 'opacity-60', low && !c.dead && 'border-l-4 border-l-destructive')}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-full bg-header font-serif text-sm font-bold text-header-foreground">{c.dead ? <X className="size-4" /> : position + 1}</span>
+        <span className="flex size-8 items-center justify-center rounded-md bg-header font-serif text-sm font-bold text-header-foreground">{c.dead ? <X className="size-4" /> : position + 1}</span>
         <span className="font-serif text-lg font-bold">{c.name}</span>
         <Badge variant="outline" className={kindClass}>{c.kind}</Badge>
         {isUp && <Badge>Up now</Badge>}{c.dead && <Badge variant="outline">Dead</Badge>}{low && !c.dead && <Badge variant="outline" className="text-destructive">Bloodied</Badge>}

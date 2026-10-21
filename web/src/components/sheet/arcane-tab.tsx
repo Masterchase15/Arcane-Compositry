@@ -76,7 +76,7 @@ export function ArcaneTab() {
                 <SmallLabel>{kind === 'Physical' ? 'Physicals' : 'Aspectuals'} known</SmallLabel>
                 <div className="flex flex-wrap gap-1.5">
                   {known.length ? known.map((name) => (
-                    <span key={name} className={cn('inline-flex items-center overflow-hidden rounded-full border text-sm font-semibold',
+                    <span key={name} className={cn('inline-flex items-center overflow-hidden rounded-md border text-sm font-semibold',
                       kind === 'Aspectual' ? 'border-gold-line bg-gold-soft text-gold-ink' : 'border-primary/30 bg-accent text-accent-foreground')}>
                       <button type="button" className="py-0.5 pr-1 pl-3 hover:underline" aria-label={`${name} details`}
                         onClick={() => { const comp = findComponent(name); if (comp) details.show({ kind: 'component', c: comp }); else toast.error('Details for this Component are not available (it may be hidden or removed).'); }}>{name}</button>
@@ -99,7 +99,7 @@ export function ArcaneTab() {
                 return (
                   <button key={f.name} type="button" aria-pressed={on}
                     onClick={() => update((x) => { x.language.forms = on ? x.language.forms.filter((v: string) => v !== f.name) : [...x.language.forms, f.name]; })}
-                    className={cn('rounded-full border px-3 py-0.5 text-sm font-semibold', on ? 'border-primary bg-primary text-primary-foreground' : 'border-primary/30 bg-accent text-accent-foreground')}>
+                    className={cn('rounded-md border px-2.5 py-0.5 text-sm font-semibold', on ? 'border-primary bg-primary text-primary-foreground' : 'border-primary/30 bg-accent text-accent-foreground')}>
                     {f.name}
                   </button>
                 );

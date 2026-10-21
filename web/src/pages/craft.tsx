@@ -9,6 +9,7 @@
  * offered too. A campaign's DM can also save the finished spell straight into
  * the campaign's Compositry spell list ("Save to campaign homebrew").
  */
+import { BorderBeam } from '@/components/ui/border-beam';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { AlertTriangle, Copy, Dices, Flag, Plus, X } from 'lucide-react';
@@ -269,7 +270,8 @@ export default function Craft() {
         </form>
 
         <aside className="lg:sticky lg:top-24 lg:self-start" aria-label="Spell results">
-          <div className="overflow-hidden rounded-xl border-[1.5px] border-primary/40 bg-card shadow-sm">
+          <div className="surface relative overflow-hidden">
+            <BorderBeam size={90} duration={8} colorFrom="var(--gold)" colorTo="var(--primary)" />
             <header className="bg-header px-4 py-3 text-header-foreground">
               <h2 className="font-serif text-xl font-bold text-header-foreground">{title}</h2>
               <p className="text-sm opacity-85">Potency {ROMAN[s.potency]} · {F.POTENCY[s.potency].meaning}</p>
@@ -348,7 +350,7 @@ function Step({ n, title, sub, children }: { n: number; title: string; sub?: str
   return (
     <section className="space-y-3">
       <h3 className="flex flex-wrap items-center gap-2.5 text-xl font-bold">
-        <span className="flex size-8 items-center justify-center rounded-full bg-header font-serif text-sm text-header-foreground">{n}</span>
+        <span className="flex size-8 items-center justify-center rounded-md bg-header font-serif text-sm text-header-foreground">{n}</span>
         {title}{sub && <span className="font-sans text-sm font-normal text-muted-foreground">- {sub}</span>}
       </h3>
       {children}
@@ -363,7 +365,7 @@ function ChipGroup({ label, options, chosen, onToggle }: { label: string; option
       <div className="flex flex-wrap gap-1.5">
         {options.length ? options.map((c) => (
           <button key={c} type="button" aria-pressed={chosen.includes(c)} onClick={() => onToggle(c)}
-            className={cn('rounded-full border px-3 py-1 text-sm font-semibold transition-colors',
+            className={cn('rounded-md border px-3 py-1 text-sm font-semibold transition-colors',
               chosen.includes(c) ? 'border-primary bg-primary text-primary-foreground' : 'border-primary/30 bg-accent text-accent-foreground hover:border-primary')}>
             {c}
           </button>

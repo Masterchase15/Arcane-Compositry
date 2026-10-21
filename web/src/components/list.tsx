@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useApi } from '@/lib/catalog';
 import { useSession } from '@/lib/session';
 import { errorMessage, type CharacterSummary } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { TabBar } from '@/components/tab-bar';
 
 /**
  * Filters stored in the address (?class=Wizard&q=fire), so a filtered list can
@@ -61,7 +61,7 @@ export function ListRow({ badge, badgeSub, title, meta, right, onClick }: {
         <strong className="block font-serif text-lg leading-snug group-hover:text-primary">{title}</strong>
         {meta && <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">{meta}</span>}
       </span>
-      {right && <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold whitespace-nowrap text-accent-foreground tabular-nums">{right}</span>}
+      {right && <span className="rounded-md border border-primary/15 bg-accent px-2.5 py-1 text-sm font-semibold whitespace-nowrap text-accent-foreground tabular-nums">{right}</span>}
     </button>
   );
 }
@@ -69,14 +69,7 @@ export function ListRow({ badge, badgeSub, title, meta, right, onClick }: {
 export function SpellListTabs({ current }: { current: 'codified' | 'compositry' | 'components' }) {
   const tabs = [['codified', 'Codified (D&D)', '/spells/codified'], ['compositry', 'Compositry (custom)', '/spells/compositry'], ['components', 'Physical & Aspectual', '/spells/components']] as const;
   return (
-    <div className="tab-tray mt-5 inline-flex max-w-full" role="tablist" aria-label="Spell lists">
-      {tabs.map(([id, label, to]) => (
-        <Link key={id} to={to} role="tab" aria-selected={id === current}
-          className="tab-pill">
-          {label}
-        </Link>
-      ))}
-    </div>
+    <TabBar className="mt-6" label="Spell lists" current={current} items={tabs.map(([id, label, to]) => ({ id, label, to }))} />
   );
 }
 

@@ -12,6 +12,7 @@
  */
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { Outlet, Route, Routes, useLocation, useParams } from 'react-router';
+import { MotionConfig } from 'motion/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { CampaignBar, Layout, Main } from '@/components/layout';
@@ -57,6 +58,8 @@ function page(load: () => Promise<{ default: ComponentType }>) {
 
 export function App() {
   return (
+    // reducedMotion="user": no movement for people who turned animations off in their system settings.
+    <MotionConfig reducedMotion="user">
     <SessionProvider>
       <TooltipProvider>
         <ConfirmProvider>
@@ -91,6 +94,7 @@ export function App() {
         </ConfirmProvider>
       </TooltipProvider>
     </SessionProvider>
+    </MotionConfig>
   );
 }
 

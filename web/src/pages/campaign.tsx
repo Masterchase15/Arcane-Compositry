@@ -24,6 +24,7 @@ import { GroupTab } from '@/components/campaign/group';
 import { InitiativeTab } from '@/components/campaign/initiative';
 import { NotesTab } from '@/components/campaign/notes';
 import { HomebrewTab, PartyTab } from '@/components/campaign/party';
+import { TabBar } from '@/components/tab-bar';
 import { useScope } from '@/lib/catalog';
 
 // [id, label, who sees it]
@@ -52,14 +53,7 @@ export default function Campaign() {
   return (
     <>
       <PageHead kicker={isDM ? 'Dungeon Master' : 'Player'} title={group.name} />
-      <div className="tab-tray mb-6" role="tablist" aria-label="Campaign">
-        {tabs.map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={id === tab} onClick={() => go({ tab: id })}
-            className="tab-pill">
-            {label}
-          </button>
-        ))}
-      </div>
+      <TabBar className="mb-6" label="Campaign" current={tab} items={tabs.map(([id, label]) => ({ id, label }))} onSelect={(id) => go({ tab: id })} />
       <div role="tabpanel">
         {tab === 'party' ? <PartyTab group={group} />
           : tab === 'homebrew' ? <HomebrewTab group={group} />
