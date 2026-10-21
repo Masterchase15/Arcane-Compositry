@@ -1,0 +1,15 @@
+{
+  "name": "Arcane Compositry - D&D campaign companion",
+  "short_name": "Compositry",
+  "description": "A D&D campaign companion for players and DMs: character sheets, campaign hub, homebrew, initiative tracker, notes and the Arcane Compositry magic system.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f7f5ec",
+  "theme_color": "#2d4a3e",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

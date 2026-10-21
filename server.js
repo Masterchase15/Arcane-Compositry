@@ -2,10 +2,13 @@
  * server.js - start here.  Run with:  npm start   (or: node server.js)
  *
  * This one small server does two jobs:
- *   1. /api/...      accounts, characters and spells      -> server/api.js
- *   2. everything else   the website files in /public     -> served as-is
+ *   1. /api/...          accounts, characters and spells     -> server/api.js
+ *   2. everything else   the React app, built into dist/     -> served as-is
+ *      Page addresses (/spells, /campaign/abc...) all get dist/index.html;
+ *      the app's router then shows the right page.
  *
- * No packages to install: it only uses what ships with Node.js (22.13+).
+ * The server itself uses only what ships with Node.js (22.13+). The React app
+ * is built first:  npm install, then npm run build  (see vite.config.ts).
  *
  * Settings (all optional, set as environment variables):
  *   PORT=3000          which port to listen on
@@ -23,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { handleApi } from './server/api.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const PUBLIC = path.join(ROOT, 'public');
+const DIST = path.join(ROOT, 'dist');
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
@@ -45,27 +48,46 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
   'Content-Security-Policy':
-    "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    // Scripts only from this site. Styles may also be inline: the dialog, menu and
+    // toast components add small <style> tags while they are open.
+    "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
 };
 
 function serveStatic(req, res, url) {
-  let rel = decodeURIComponent(url.pathname);
-  if (rel === '/') rel = '/index.html';
-  const file = path.normalize(path.join(PUBLIC, rel));
-  // Never serve anything outside /public.
-  if (!file.startsWith(PUBLIC + path.sep)) return notFound(res);
+  const rel = decodeURIComponent(url.pathname);
+  const file = path.normalize(path.join(DIST, rel));
+  // Never serve anything outside dist/.
+  if (file !== DIST && !file.startsWith(DIST + path.sep)) return notFound(res);
   fs.stat(file, (err, stat) => {
-    if (err || !stat.isFile()) return notFound(res);
-    res.writeHead(200, {
-      'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
-      // "no-cache" = the browser re-checks each time, so edits show up on refresh.
-      'Cache-Control': 'no-cache',
-      'Last-Modified': stat.mtime.toUTCString(),
+    if (!err && stat.isFile()) return sendFile(req, res, file, stat);
+    // Not a file: a page address like /spells gets the app, which shows the page.
+    // Things that look like files (have an extension) really are missing.
+    if (path.extname(rel)) return notFound(res);
+    const index = path.join(DIST, 'index.html');
+    fs.stat(index, (err2, stat2) => {
+      if (err2) return notBuilt(res);
+      sendFile(req, res, index, stat2);
     });
-    if (req.method === 'HEAD') return res.end();
-    // A read error (file removed mid-request...) must end this response, not crash the server.
-    fs.createReadStream(file).on('error', () => res.destroy()).pipe(res);
   });
+}
+
+function sendFile(req, res, file, stat) {
+  // Built files under /assets/ have a fingerprint in their name, so they can be
+  // cached for good. Everything else is re-checked, so new versions show up at once.
+  const immutable = file.startsWith(path.join(DIST, 'assets') + path.sep);
+  res.writeHead(200, {
+    'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
+    'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
+    'Last-Modified': stat.mtime.toUTCString(),
+  });
+  if (req.method === 'HEAD') return res.end();
+  // A read error (file removed mid-request...) must end this response, not crash the server.
+  fs.createReadStream(file).on('error', () => res.destroy()).pipe(res);
+}
+
+function notBuilt(res) {
+  res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('The website has not been built yet. Run:  npm install  then  npm run build');
 }
 
 function notFound(res) {

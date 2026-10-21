@@ -25,7 +25,7 @@
  *      school: 'Evocation',           // Abjuration, Conjuration, Divination, Enchantment,
  *                                     // Evocation, Illusion, Necromancy, Transmutation
  *      classes: ['Sorcerer', 'Wizard'],  // WHO MAY LEARN IT. Names must match the class list in
- *                                        // public/js/rules/constants.js. Use ['Any'] for every class.
+ *                                        // shared/rules/constants.js. Use ['Any'] for every class.
  *      castingTime: 'Action',
  *      range: '120 feet',
  *      components: 'V, S, M (a pinch of sulfur)',

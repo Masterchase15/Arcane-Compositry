@@ -8,7 +8,7 @@ There are two spell lists:
 
 And two ways to add to either list. Use whichever you like; they combine.
 
-## Way 1 - the DM page (no code)
+## Way 1 - your campaign's DM tabs (no code)
 
 1. Sign in, open **Campaigns** and enter your campaign (you must be its DM), then the **Spells** tab.
    Everything you add or change there applies to that campaign only. (Made a spell in the
@@ -21,7 +21,7 @@ The spell appears in the index straight away for everyone.
 - **Edit** works on any spell. Editing a spell that comes from a file saves
   your version on top of it ("Edited here"); **Undo edits** brings the file
   version back.
-- **Delete** removes spells added on the DM page. Characters that already have
+- **Delete** removes spells added in your campaign's DM tabs. Characters that already have
   the spell keep their copy on their sheet.
 
 Spells added this way are stored in the database (`storage/arcane.db`), so
@@ -82,12 +82,12 @@ or **hidden** (only the group's DMs see it). Use it to prepare things ahead of
 time - an enemy's weapon, an undiscovered Component - and reveal them when the
 players earn them.
 
-- On the DM page every row shows **Public** or **Hidden**, with a **Hide** /
+- In your campaign's DM tabs every row shows **Public** or **Hidden**, with a **Hide** /
   **Publish** button. It works on everything, including the entries that
   shipped with the site.
 - The add / edit form has a **Visibility** box, so a new entry can start hidden.
 - In a data file, write `hidden: true` to make an entry start hidden. The
-  button on the DM page still overrides it.
+  button in your campaign's DM tabs still overrides it.
 - The group's DMs see hidden entries everywhere (marked "Hidden"), so you can still
   add a hidden item or spell to a player's sheet. The player keeps the row on
   their sheet, but cannot open its details until you publish it.
@@ -137,7 +137,7 @@ class with the spell's `classes`:
 - class is not listed - the player sees a warning naming the allowed classes
   and must confirm. This covers multiclassing, feats and DM rulings.
 
-To make it strict instead, open `public/js/spellbook.js` and change
+To make it strict instead, open `web/src/lib/spellbook.ts` and change
 
 ```js
 export const CLASS_RULE = 'warn';
@@ -148,12 +148,12 @@ accounts can still add anything to anyone.
 
 ## Adding a new school, Component or Form
 
-Open `public/js/rules/constants.js`. Each list has a comment explaining its
+Open `shared/rules/constants.js`. Each list has a comment explaining its
 entries. Add a line and it appears in every filter, dropdown and the spell
 checker.
 
 ## Adding a new class
 
-Classes are added on the DM page (Classes tab) or in `data/classes.js` - see
+Classes are added in your campaign's DM tabs (Classes tab) or in `data/classes.js` - see
 [ADDING_ITEMS_AND_CLASSES.md](ADDING_ITEMS_AND_CLASSES.md). Once a class
 exists, it can be ticked on any spell.

@@ -32,13 +32,13 @@
  * ─── TO ADD A NEW FIELD TO A LIST ──────────────────────────────────────────
  *  Add it to that list's validate function below (so it is kept when saved),
  *  then show it on the list's page and add it to the DM form in
- *  public/js/pages/campaign-homebrew.js.
+ *  web/src/components/campaign/homebrew.tsx.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { db } from './db.js';
-import { SCHOOLS, ANY_CLASS, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '../public/js/rules/constants.js';
+import { SCHOOLS, ANY_CLASS, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '../shared/rules/constants.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ABILITY_KEYS = ABILITIES.map((a) => a.key);

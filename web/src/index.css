@@ -1,0 +1,238 @@
+/*
+ * web/src/index.css - the site's look: Tailwind, plus the colour "tokens".
+ *
+ * The tokens below are the site's palette (from the Player's Field Codex PDF:
+ * forest green, gold rules, parchment, sage) mapped onto the names shadcn/ui
+ * components use (--primary, --card, --muted...). Change a token here and every
+ * component follows, in light and dark. Components themselves are in
+ * web/src/components/ui/ (shadcn: copied in, yours to edit).
+ */
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.375rem;             /* corners: crisp, 6px on cards and buttons */
+
+  --background: #f6f4ec;          /* parchment page */
+  --foreground: #1f2d27;          /* ink */
+  --card: #ffffff;
+  --card-foreground: #1f2d27;
+  --popover: #ffffff;
+  --popover-foreground: #1f2d27;
+  --primary: #2d4a3e;             /* forest green */
+  --primary-foreground: #ffffff;
+  --secondary: #f2efe2;
+  --secondary-foreground: #1f2d27;
+  --muted: #f2efe2;
+  --muted-foreground: #4b5b53;
+  --accent: #dde8df;              /* sage */
+  --accent-foreground: #24463a;
+  --destructive: #b3261e;
+  --border: #e0dccb;
+  --input: #cfcbb8;
+  --ring: #2d4a3e;
+
+  /* Arcane Compositry extras */
+  --gold: #b5923c;                /* decorative rules */
+  --gold-ink: #775815;            /* gold text that must stay readable */
+  --gold-soft: #f7efd6;           /* callouts, the campaign banner */
+  --gold-line: #dcc88f;
+  --header: #2d4a3e;              /* table headers, dark boxes */
+  --header-foreground: #f4f1e4;
+  --ok: #2b6a44;
+  --hp: #b8322a;                  /* the character sheet's Hit Points, Mana and Guard bars */
+  --mana: #2f68ad;
+  --glow: rgb(45 74 62 / 0.10);   /* the soft light at the top of every page */
+}
+
+.dark {
+  --background: #0e1411;
+  --foreground: #e7ede6;
+  --card: #151f1a;
+  --card-foreground: #e7ede6;
+  --popover: #18221d;
+  --popover-foreground: #e7ede6;
+  --primary: #8fc4a6;
+  --primary-foreground: #0e1813;
+  --secondary: #1f2b25;
+  --secondary-foreground: #e7ede6;
+  --muted: #1f2b25;
+  --muted-foreground: #a9b8ae;
+  --accent: #22342b;
+  --accent-foreground: #cfe3d6;
+  --destructive: #f28b82;
+  --border: #26332c;
+  --input: #34453b;
+  --ring: #8fc4a6;
+
+  --gold: #c9a851;
+  --gold-ink: #e2c676;
+  --gold-soft: #2a2717;
+  --gold-line: #5a4d22;
+  --header: #26382f;
+  --header-foreground: #e7ede6;
+  --ok: #86cfa3;
+  --hp: #ef8a80;
+  --mana: #86b5f0;
+  --glow: rgb(143 196 166 / 0.09);
+}
+
+@theme inline {
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+
+  /* Every corner size, kept small (rounded-xl and up included). */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 4px);
+  --radius-3xl: calc(var(--radius) + 6px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-line: var(--gold-line);
+  --color-header: var(--header);
+  --color-header-foreground: var(--header-foreground);
+  --color-ok: var(--ok);
+  --color-hp: var(--hp);
+  --color-mana: var(--mana);
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  /* Slightly bigger text on tablets and computers (every rem size follows). */
+  html { font-size: 100%; }
+  @media (min-width: 640px) { html { font-size: 106.25%; } }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-image: radial-gradient(1100px 420px at 50% -120px, var(--glow), transparent 70%);
+    background-repeat: no-repeat;
+  }
+  h1, h2, h3, h4 { @apply font-serif text-foreground; }
+}
+
+/* A small uppercase gold label above headings ("Dungeon Master", "Saved to your account"). */
+@utility kicker {
+  @apply text-xs font-bold uppercase tracking-[0.18em] text-gold-ink;
+}
+/* The usual box: cards, panels, list rows. */
+@utility surface {
+  @apply rounded-lg border bg-card text-card-foreground shadow-[0_1px_0_rgb(0_0_0/0.03),0_2px_8px_-4px_rgb(0_0_0/0.08)] dark:shadow-none;
+}
+/* A small segmented switch (homebrew lists, encounters). Page-level tabs use <TabBar> (components/tab-bar.tsx). */
+@utility tab-tray {
+  @apply flex gap-0.5 overflow-x-auto rounded-md border bg-muted/60 p-0.5;
+}
+@utility tab-pill {
+  @apply shrink-0 rounded-[calc(var(--radius)-2px)] px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground aria-selected:bg-card aria-selected:text-foreground aria-selected:shadow-xs aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs;
+}
+/* The gold rule under page titles. */
+@utility rule-gold {
+  @apply h-0.5 border-0 bg-gradient-to-r from-gold to-transparent;
+}
+
+/*
+ * Rules text: the Codex chapters, the character guide and other hand-written
+ * HTML (shared/rules/codex-content.js) is shown inside <RichHtml>, which adds
+ * the .prose-ac class. These are the building blocks that text uses.
+ */
+@layer components {
+  .prose-ac { @apply leading-relaxed; }
+  .prose-ac > * + * { @apply mt-4; }
+  .prose-ac h2 { @apply mt-8 text-2xl font-bold; }
+  .prose-ac h3 { @apply mt-6 text-xl font-semibold; }
+  .prose-ac h4 { @apply mt-4 font-semibold; }
+  .prose-ac p + p { @apply mt-3; }
+  .prose-ac ul { @apply list-disc space-y-1 pl-6; }
+  .prose-ac ol:not(.steps) { @apply list-decimal space-y-1 pl-6; }
+  .prose-ac a:not(.btn):not(.card) { @apply font-semibold text-primary underline decoration-gold/60 underline-offset-4 hover:decoration-gold; }
+  .prose-ac b, .prose-ac strong { @apply font-bold; }
+
+  .prose-ac .table-wrap { @apply overflow-x-auto rounded-md border; }
+  .prose-ac table { @apply w-full border-collapse text-[0.95rem]; }
+  .prose-ac th { @apply whitespace-nowrap bg-header px-2.5 py-2 text-left text-xs font-bold uppercase tracking-wider text-header-foreground; }
+  .prose-ac td { @apply border-b px-2.5 py-2 align-top; }
+  .prose-ac tbody tr:nth-child(even) td { @apply bg-muted/50; }
+  .prose-ac .c { @apply text-center; }
+
+  .prose-ac .lead { @apply font-serif text-lg text-muted-foreground; }
+  .prose-ac .small { @apply text-sm; }
+  .prose-ac .muted { @apply text-muted-foreground; }
+  .prose-ac .fine { @apply text-sm italic text-muted-foreground; }
+  .prose-ac .grid { @apply grid gap-4; }
+  .prose-ac .cols-2 { @apply sm:grid-cols-2; }
+  .prose-ac .cols-auto { @apply grid-cols-[repeat(auto-fill,minmax(260px,1fr))]; }
+  .prose-ac .stack > * + * { @apply mt-3; }
+
+  .prose-ac .pull { @apply border-l-4 border-gold py-1.5 pl-4 font-serif text-xl; }
+  .prose-ac .callout { @apply rounded-r-lg border-l-4 border-gold bg-gold-soft px-4 py-3; }
+  .prose-ac .callout b:first-child { @apply text-gold-ink; }
+  .prose-ac .formula { @apply rounded-r-lg border-l-4 border-primary/50 bg-accent px-3.5 py-2.5 font-mono text-[0.95rem] font-bold text-accent-foreground; }
+  .prose-ac .formula.gold { @apply border-gold bg-gold-soft text-foreground; }
+  .prose-ac .dark-box { @apply rounded-lg bg-header px-4.5 py-4 text-header-foreground; }
+  .prose-ac .dark-box h3, .prose-ac .dark-box h4 { @apply text-[#ecd98f]; }
+  .prose-ac .dark-box .kicker { @apply text-[#e5cf85]; }
+  .prose-ac .note-box { @apply rounded-lg border border-gold-line bg-gold-soft/60 px-4 py-3.5; }
+  .prose-ac .note-box h4, .prose-ac .plain-box h4 { @apply mt-0 text-sm uppercase tracking-wide text-gold-ink; }
+  .prose-ac .plain-box { @apply rounded-lg border bg-card px-4 py-3.5; }
+
+  .prose-ac .steps { @apply grid list-none grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5 p-0; }
+  .prose-ac .steps li { @apply grid grid-cols-[34px_1fr] gap-3; }
+  .prose-ac .steps .n { @apply flex size-[34px] items-center justify-center rounded-md bg-header font-serif font-bold text-header-foreground; }
+  .prose-ac .steps h4 { @apply mt-1 mb-0.5; }
+  .prose-ac .steps p { @apply m-0 text-[0.95rem]; }
+
+  .prose-ac .chips { @apply flex flex-wrap gap-2; }
+  .prose-ac .chip { @apply inline-flex items-center rounded-md border border-primary/30 bg-accent px-2.5 py-0.5 text-sm font-semibold text-accent-foreground; }
+  .prose-ac .chip.gold { @apply border-gold-line bg-gold-soft text-gold-ink; }
+
+  .prose-ac .stat-grid { @apply my-3 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-px overflow-hidden rounded-lg border bg-border; }
+  .prose-ac .stat-grid > div { @apply bg-card px-2.5 py-2; }
+  .prose-ac .stat-grid dt { @apply text-xs font-bold uppercase tracking-wider text-muted-foreground; }
+
+  .prose-ac .card { @apply block rounded-xl border bg-card p-4 no-underline shadow-sm transition-colors hover:border-primary; }
+  .prose-ac .card h3 { @apply mt-1 text-lg; }
+}

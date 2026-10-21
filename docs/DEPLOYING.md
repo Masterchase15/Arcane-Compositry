@@ -101,7 +101,7 @@ HTTPS is also required for the "install as app" feature below, except on
 ## 2. Install it as a web app
 
 The site is already a Progressive Web App: it has a manifest
-(`public/manifest.webmanifest`), icons and a service worker (`public/sw.js`).
+(`web/public/manifest.webmanifest`), icons and a service worker (`web/public/sw.js`).
 
 - **Android / Chrome / Edge:** open the site, then menu > *Install app* (or
   *Add to Home screen*).
@@ -112,9 +112,9 @@ It then opens in its own window with the forest-green title bar. The rules,
 calculators and spell lists stay readable if the connection drops; accounts
 and saving need the server.
 
-To change the app name, colours or icon, edit `public/manifest.webmanifest`
-and the two files in `public/icons/`. For the sharpest icon on iPhones, add a
-180 x 180 PNG and point the `apple-touch-icon` line in `public/index.html` at
+To change the app name, colours or icon, edit `web/public/manifest.webmanifest`
+and the two files in `web/public/icons/`. For the sharpest icon on iPhones, add a
+180 x 180 PNG and point the `apple-touch-icon` line in `web/index.html` at
 it.
 
 ## 3. Back up
