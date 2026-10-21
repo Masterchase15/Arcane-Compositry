@@ -1,32 +1,35 @@
 /**
- * server/api.js - every /api/... endpoint the website talks to.
+ * server/api.js - receives every /api/... request and sends it to the right handler.
  *
- * Each route is one entry in ROUTES:  [METHOD, path pattern, who may call it, handler]
+ * The endpoints live in server/routes/, one file per feature (auth, email,
+ * campaigns, catalog, notes, encounters, characters, admin). Each exports
+ * `routes`, a list of lines:  [METHOD, path pattern, who may call it, handler]
  *   who:  'public'  anyone
  *         'user'    must be logged in
- *         'member'  must be logged in and a member of the group the page is showing
- *         'dm'      must be logged in as a DM of the group the page is showing
+ *         'member'  must be logged in and a member of the campaign the page is showing
+ *         'dm'      must be logged in as a DM of the campaign the page is showing
  *         'admin'   must be logged in as the site admin
  * A handler receives ({ user, group, params, body, query, req, res }) and returns
- * the object to send back as JSON. Throw `fail(status, message)` to send an error.
+ * the object to send back as JSON. Throw `fail(status, message)` (server/http.js)
+ * to send an error. Those checks all happen here, in handleApi(), before a
+ * handler runs.
  *
- * GROUPS
- *   Each campaign is a group. The browser says which group it is showing by
- *   adding ?group=<id> to every request (public/js/api.js does this). `group`
- *   is then { id, name, inviteCode, role } - but only if the user really is a
- *   member; otherwise it is null.
+ * CAMPAIGNS ("groups")
+ *   The browser says which campaign it is showing by adding ?group=<id> to every
+ *   request (public/js/api.js does this). `group` is then { id, name,
+ *   inviteCode, role } - but only if the user really is a member; otherwise null.
  *
- * To add an endpoint: write a handler, add a line to ROUTES. That's it.
+ * To add an endpoint: write a handler in the right routes file and add a line to
+ * its `routes`. A new routes file also needs adding to ROUTE_FILES below.
  */
-import crypto from 'node:crypto';
-import { db, newInviteCode } from './db.js';
+import { db } from './db.js';
 import * as auth from './auth.js';
 import { sendMail, mailEnabled, siteUrl } from './mail.js';
 import { LISTS, getList, validateEntry, saveCustom, deleteCustom, setHidden, forgetVisibility } from './catalog.js';
 
 const MAX_BODY = 512 * 1024; // 512 KB is far more than any character sheet needs
 
-export const fail = (status, message, fields) => Object.assign(new Error(message), { status, fields });
+const ROUTE_FILES = [authRoutes, emailRoutes, campaignRoutes, catalogRoutes, noteRoutes, encounterRoutes, characterRoutes, adminRoutes];
 
 // ── Small brute-force guard: 10 attempts per 5 minutes per address (wrong passwords,
 //    sign-ups, joins, password-reset requests)

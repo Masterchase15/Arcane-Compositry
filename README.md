@@ -270,7 +270,13 @@ editing those updates the sheet too.
 
 ```
 server.js            starts the site
-server/              accounts, characters, notes and data loading (the "backend")
+server/              the "backend"
+  api.js             checks each request, then hands it to a route file
+  routes/            the endpoints, one file per feature (auth, campaigns, characters...)
+  auth.js            passwords, sign-in cookies, email links
+  db.js              opens the database; migrations.js = its table changes
+  catalog.js         loads the data/ lists and merges each campaign's homebrew
+  mail.js            sends email (Resend)
 data/                the lists you can edit by hand
   spells/codified.js     normal D&D spells
   spells/compositry.js   custom Compositions
@@ -283,10 +289,11 @@ public/              everything the browser loads
   index.html
   css/styles.css     the whole look
   js/app.js          navigation + which page to show
-  js/pages/          one file per page
+  js/pages/          one file per page (the campaign hub: campaign.js + campaign-*.js per tab)
   js/rules/          the game rules: formulas, tables, codex text, sheet shape
   js/calculators.js  every interactive formula
 scripts/             small helper commands
+test/                automated tests - run with: npm test
 storage/             the database (created on first run - back this up!)
 docs/                guides for you
 ```
@@ -298,6 +305,7 @@ node server.js                  # run the site
 node --watch server.js          # run it and restart automatically when server files change
 node scripts/check-spells.js    # check everything in data/ for typos
 node scripts/make-admin.js NAME # make the account NAME a site admin (add "off" to undo; no NAME lists admins)
+npm test                        # run the automated tests (do this before every commit)
 ```
 
 (`npm start`, `npm run check-data` and `npm run make-admin NAME` do the same

@@ -10,7 +10,8 @@
     "dev": "node --watch server.js",
     "make-admin": "node scripts/make-admin.js",
     "check-data": "node scripts/check-spells.js",
-    "check-spells": "node scripts/check-spells.js"
+    "check-spells": "node scripts/check-spells.js",
+    "test": "node --test \"test/*.test.js\""
   },
   "engines": {
     "node": ">=22.13"

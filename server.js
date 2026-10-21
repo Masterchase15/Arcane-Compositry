@@ -24,7 +24,7 @@ import { handleApi } from './server/api.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(ROOT, 'public');
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 const TYPES = {
@@ -82,6 +82,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`\n  Arcane Compositry companion is running.`);
-  console.log(`  Open  http://localhost:${PORT}  in your browser.`);
+  // The real port (PORT=0 lets the system pick a free one - the tests do that).
+  console.log(`  Open  http://localhost:${server.address().port}  in your browser.`);
   console.log(`  (Press Ctrl+C to stop.)\n`);
 });
