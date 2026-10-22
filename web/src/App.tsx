@@ -68,7 +68,7 @@ export function App() {
             <Route element={<Layout />}>
               <Route element={<BrowseScope />}>
                 <Route index element={<Home />} />
-                <Route path="codex/:chapter?" element={<Codex />} />
+                <Route path="codex/:book?/:page?" element={<Codex />} />
                 <Route path="craft" element={<Craft />} />
                 <Route path="tools" element={<Tools />} />
                 <Route path="spells/components" element={<Components />} />

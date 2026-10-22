@@ -23,8 +23,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== location.origin) return;
-  // Only the spell, item and class lists are kept for offline reading; everything else under /api is live-only.
-  if (url.pathname.startsWith('/api/') && !['/api/spells', '/api/items', '/api/classes', '/api/components'].includes(url.pathname)) return;
+  // Only the spell, item and class lists and the Codex books (pages you have opened) are kept for offline
+  // reading; everything else under /api - bookmarks included - is live-only.
+  const offline = ['/api/spells', '/api/items', '/api/classes', '/api/components'].includes(url.pathname) || /^\/api\/books\/[\w-]+(\/pages\/[\w-]+)?$/.test(url.pathname);
+  if (url.pathname.startsWith('/api/') && !offline) return;
 
   event.respondWith(
     fetch(request)
