@@ -236,3 +236,80 @@
   .prose-ac .card { @apply block rounded-xl border bg-card p-4 no-underline shadow-sm transition-colors hover:border-primary; }
   .prose-ac .card h3 { @apply mt-1 text-lg; }
 }
+
+/*
+ * The Codex library (pages/codex.tsx, components/codex/). Book pages are rules
+ * text too (.prose-ac); .book-text adds what the rulebooks need: stat blocks,
+ * sidebars, links between entries, search highlights and the text-size steps.
+ * The HTML comes from server/markdown.js.
+ */
+/* Book colours: each book keeps its place in data/books/index.js as its tone. */
+[data-tone='0'] { --tone: #2d4a3e; }
+[data-tone='1'] { --tone: #7a2430; }
+[data-tone='2'] { --tone: #2f3a6b; }
+[data-tone='3'] { --tone: #5b3a1f; }
+[data-tone='4'] { --tone: #4b2a5c; }
+[data-tone='5'] { --tone: #1f5257; }
+
+@layer components {
+  .book-cover { background: linear-gradient(100deg, rgb(0 0 0 / 28%) 0 7px, transparent 7px), var(--tone); }
+  .book-cover::after { content: ''; position: absolute; inset: 6px 6px 6px 12px; border: 1px solid rgb(236 217 143 / 55%); border-radius: 2px 5px 5px 2px; pointer-events: none; }
+
+  .book-text { @apply max-w-[78ch]; }
+  .book-text.fs-1 { font-size: 0.88rem; }
+  .book-text.fs-2 { font-size: 0.95rem; }
+  .book-text.fs-3 { font-size: 1.02rem; }
+  .book-text.fs-4 { font-size: 1.12rem; }
+  .book-text.fs-5 { font-size: 1.25rem; }
+  .book-text > :first-child { @apply mt-0; }
+  .book-text h2 { @apply mt-10 border-b-[1.5px] border-gold-line pb-1 text-[1.5em]; }
+  .book-text h3 { @apply mt-8 text-[1.22em]; }
+  .book-text h4 { @apply mt-6 text-[1.05em]; }
+  .book-text :is(h2, h3, h4)[id] { scroll-margin-top: 9.5rem; }
+  .book-text h5.minor { @apply mt-6 mb-1 font-sans text-[0.78em] font-bold uppercase tracking-wider text-gold-ink; }
+  .book-text hr { @apply my-3 border-0 border-t; }
+
+  /* Tables: words never break mid-word, so no column is squeezed thinner than its longest
+     word (a table too wide for the screen scrolls sideways instead). A first column of short
+     entries (dice rolls, names, levels) never wraps; a first column of longer ones keeps room. */
+  .book-text table { @apply text-[0.92em]; overflow-wrap: normal; word-break: normal; }
+  .book-text th { white-space: normal; }
+  .book-text .r { @apply text-right; }
+  .book-text table.tight-first :is(td, th):first-child { white-space: nowrap; }
+  .book-text table:not(.tight-first):not(.abilities-table) :is(td, th):first-child { min-width: 11em; }
+
+  .book-text blockquote { @apply border-l-4 border-primary/40 py-1 pl-4 text-muted-foreground; }
+  .book-text blockquote.epigraph { @apply border-gold font-serif text-[1.05em]; }
+  .book-text .inset { @apply rounded-lg border border-primary/30 bg-accent/50 px-4 py-3; }
+  .book-text .inset .box-title { @apply mt-0 mb-2 text-accent-foreground; }
+
+  /* Monster stat blocks */
+  .book-text .book-statblock { @apply rounded-sm border-y-4 border-gold bg-gold-soft/60 px-4 py-3.5; }
+  .book-text .book-statblock > * + * { @apply mt-1.5; }
+  .book-text .book-statblock .box-title { @apply mt-0 text-[1.35em] font-bold text-gold-ink; }
+  .book-text .book-statblock hr { @apply my-2 border-gold-line; }
+  .book-text .book-statblock ul { @apply list-none space-y-0.5 pl-0; }
+  .book-text .book-statblock h4.minor { @apply mt-4 mb-2 border-b-[1.5px] border-gold-line pb-0.5 text-[1.1em] text-gold-ink; }
+  .book-text .abilities-table :is(th, td) { @apply px-1.5 py-1 text-center; }
+  .book-text .abilities-table td { @apply bg-card! font-semibold; }
+
+  /* A list of names links to their descriptions: a quieter link than the usual one. */
+  .book-text a.xref:not(.btn):not(.card) { font-weight: inherit; color: inherit; @apply decoration-gold decoration-dotted underline-offset-[3px] hover:text-primary hover:decoration-solid; }
+
+  /* The bookmark button the reader adds beside each heading. */
+  .book-text .hd-mark { @apply ml-1.5 inline-flex size-7 cursor-pointer items-center justify-center rounded-md align-middle text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-gold-ink focus-visible:opacity-100; }
+  .book-text .hd-mark svg { @apply size-[18px]; }
+  .book-text .hd:hover .hd-mark, .book-text .hd-mark.is-marked { @apply opacity-100; }
+  .book-text .hd-mark.is-marked { @apply text-gold-ink; }
+  .book-text .hd-mark.is-marked svg { fill: currentColor; }
+  @media (hover: none) { .book-text .hd-mark { @apply opacity-50; } }
+
+  .book-text .flash { animation: book-flash 1.6s ease-out; @apply rounded-sm; }
+  mark { @apply rounded-sm bg-gold/40 px-px text-inherit; }
+  mark.hit.current { @apply bg-gold text-[#1d2f27] ring-2 ring-gold; }
+}
+@keyframes book-flash { from { background: color-mix(in srgb, var(--gold) 40%, transparent); } to { background: transparent; } }
+
+@media print {
+  header, nav, .hd-mark { display: none !important; }
+}

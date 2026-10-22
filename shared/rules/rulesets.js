@@ -30,7 +30,7 @@ export const RULESETS = [
     name: 'Arcane Compositry',
     short: 'Arcane Compositry',
     summary: 'A magic system for 5e: build spells from Components, a Form and a Potency, and cast them with Mana instead of spell slots. Adds Catalysts, Attack Chains, Guard and Momentum Dice.',
-    about: '/codex', // the Codex explains it
+    about: '/codex/arcane-compositry', // its book in the Codex library (data/books/index.js) explains it
   },
 ];
 

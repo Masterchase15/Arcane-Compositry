@@ -55,6 +55,8 @@ For production, `npm run build` makes `dist/` and `node server.js` serves it on
 | `components/ui/`           | shadcn/ui components (buttons, dialogs, menus...) - copied in, yours to edit. |
 | `components/ui/` (Magic UI) | The animated pieces from [Magic UI](https://magicui.design): `border-beam`, `blur-fade`, `dot-pattern`, `magic-card`, `number-ticker`, `shimmer-button`. They use [Motion](https://motion.dev). |
 | `components/tab-bar.tsx`   | Underlined tabs with the sliding gold line (sheet, campaign hub, spell lists). |
+| `components/codex/`        | The Codex reader: `reader.tsx` (the reading screen), `side-panel.tsx` (contents + bookmarks), `search-dialog.tsx`. |
+| `lib/books.ts`             | The Codex library's data: books, pages, search, bookmarks, reading progress. |
 | `lib/api.ts`               | Talking to the server. |
 | `lib/session.tsx`          | Who is signed in, their campaigns, the Rulesets filter. |
 | `components/rulesets-bar.tsx` | The Rulesets filter, the ruleset switches, and the Homebrew badges. |
@@ -280,6 +282,32 @@ member before using it (`currentGroup()` in `server/api.js`).
 A site that existed before campaigns were added keeps everything: the database
 upgrade puts every account, character, note and DM edit into one campaign
 called "Our campaign", with everyone keeping their DM or player role.
+
+## The Codex library
+
+The Codex page (`/codex`) is a library of rulebooks. Each book is a Markdown
+file in `data/books/`, listed in `data/books/index.js`; the Arcane Compositry
+codex is the exception - its text stays in `shared/rules/codex-content.js`
+(`builtIn: true`) so its live calculators keep working.
+
+- **Server** - `server/books.js` reads each file once (and again when it
+  changes), turns its headings into a table of contents, splits long chapters
+  into pages, links lists of names to their descriptions, and searches it.
+  `server/markdown.js` turns the Markdown into safe HTML (escaped; images,
+  outside links and raw HTML are dropped). The endpoints are in
+  `server/routes/books.js`.
+- **Browser** - `pages/codex.tsx` is the library and `components/codex/reader.tsx`
+  the reading screen (contents, search, chapter list, text size, bookmarks,
+  "on this page", previous / next, keyboard shortcuts). Pages are shown with
+  `<RichHtml>`, like the other rules text. `lib/books.ts` loads books and gives
+  the built-in codex the same shape as the others.
+- **Addresses** - `/codex/<book>/<page>?at=<heading>`; old links to Arcane
+  Compositry chapters (`/codex/<chapter>`) still work.
+- **Bookmarks and "continue reading"** are rows in the `bookmarks` and
+  `reading_progress` tables, keyed by account, so they follow the person to
+  any device and nobody else sees them. A bookmark stores the book id, page id
+  and heading id - so don't rename a book's `id` in `index.js` once people
+  have bookmarked it. Signed out, reading progress is kept in the browser only.
 
 ## Initiative trackers
 

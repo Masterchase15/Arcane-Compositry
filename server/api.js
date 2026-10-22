@@ -2,7 +2,7 @@
  * server/api.js - receives every /api/... request and sends it to the right handler.
  *
  * The endpoints live in server/routes/, one file per feature (auth, email,
- * campaigns, catalog, notes, encounters, characters, admin). Each exports
+ * campaigns, catalog, notes, encounters, characters, books, admin). Each exports
  * `routes`, a list of lines:  [METHOD, path pattern, who may call it, handler]
  *   who:  'public'  anyone
  *         'user'    must be logged in
@@ -33,11 +33,12 @@ import * as catalogRoutes from './routes/catalog.js';
 import * as noteRoutes from './routes/notes.js';
 import * as encounterRoutes from './routes/encounters.js';
 import * as characterRoutes from './routes/characters.js';
+import * as bookRoutes from './routes/books.js';
 import * as adminRoutes from './routes/admin.js';
 
 const MAX_BODY = 512 * 1024; // 512 KB is far more than any character sheet needs
 
-const ROUTE_FILES = [authRoutes, emailRoutes, campaignRoutes, catalogRoutes, noteRoutes, encounterRoutes, characterRoutes, adminRoutes];
+const ROUTE_FILES = [authRoutes, emailRoutes, campaignRoutes, catalogRoutes, noteRoutes, encounterRoutes, characterRoutes, bookRoutes, adminRoutes];
 
 const ROUTES = ROUTE_FILES.flatMap((file) => file.routes).map(([method, pattern, access, handler]) => ({
   method, access, handler,

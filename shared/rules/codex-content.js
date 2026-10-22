@@ -447,7 +447,7 @@ export const CHAPTERS = [
           <h3>1. Start the Chain</h3>
           <p>Make a normal attack roll against the target's AC.</p>
           <div class="formula">Attack Total = d20 + Attack Bonus</div>
-          <p><b>If the roll misses AC:</b> use a Miss Recovery option (see <a href="#/codex/misses-finishers">Misses &amp; Finishers</a>). A miss does not automatically mean "your turn is over."</p>
+          <p><b>If the roll misses AC:</b> use a Miss Recovery option (see <a href="/codex/arcane-compositry/misses-finishers">Misses &amp; Finishers</a>). A miss does not automatically mean "your turn is over."</p>
           <p><b>If the roll meets or beats AC:</b> the target may take the hit or spend Guard on an active defense.</p>
           <h3>2. Resolve the Hit</h3>
           <p>If no defense stops it, deal damage. The attacker gains <b>1 Chain Momentum</b> and may make the next attack in the Chain, up to their maximum Chain Length.</p>
@@ -793,7 +793,7 @@ export const CHAPTERS = [
         </div>
       </div>
       <div class="dark-box"><p><b>Remember:</b> Guard is a choice. Do not roll a defense against every hit automatically.</p></div>
-      <div class="callout"><b>Momentum Dice are separate:</b> your persistent combo die runs d4 > d6 > d8 > d10 > d12. It survives between Chains until spent or a direct enemy hit deals damage. See <a href="#/codex/momentum-dice">Momentum Dice</a>.</div>`,
+      <div class="callout"><b>Momentum Dice are separate:</b> your persistent combo die runs d4 > d6 > d8 > d10 > d12. It survives between Chains until spent or a direct enemy hit deals damage. See <a href="/codex/arcane-compositry/momentum-dice">Momentum Dice</a>.</div>`,
   },
   {
     id: 'arcane-cheat-sheet', section: 'ref', kicker: 'Table Reference', title: 'One-Page Arcane Compositry Cheat Sheet', page: 30,

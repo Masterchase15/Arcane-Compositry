@@ -16,6 +16,8 @@
  *   dm_notes       each group's session notes and lore entries
  *   encounters     each group's initiative trackers (one row per encounter)
  *   group_visibility    which spells, Components, items and classes a group's DM has hidden or published
+ *   bookmarks      each account's Codex bookmarks (book, page, heading, note)
+ *   reading_progress    where each account last was in each Codex book ("Continue reading")
  *
  * Changing the tables? Add a migration to server/migrations.js - never edit an
  * existing one, only append new ones.

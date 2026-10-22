@@ -65,6 +65,7 @@ invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 | ------------------------------------------- | -------------------------------------------------- |
 | **Change a Mana cost, damage number or any formula** | `shared/rules/formulas.js` - see [Tuning the numbers](#tuning-the-numbers) below |
 | **Edit, add to or re-table the Codex**      | `shared/rules/codex-content.js` - see [Editing the Codex](#editing-the-codex) below |
+| **Add a rulebook to the Codex library**     | Put its `.md` file in `data/books/` and add an entry to `data/books/index.js` (the comment at its top explains each field) |
 | Add or edit a spell                         | Your campaign (as DM), or `data/spells/` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
 | Add or edit a Physical / Aspectual Component | Your campaign (as DM): Spells > Physical & Aspectual, or `data/components.js` - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md) |
 | Add a custom subclass to any class          | Your campaign (as DM): Classes > Subclasses, or `data/subclasses.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md#subclasses) |
@@ -199,7 +200,7 @@ It is a list called `CHAPTERS`, one entry per codex page, in reading order:
 
 ```js
 {
-  id: 'active-defense',            // the address: /codex/active-defense
+  id: 'active-defense',            // the address: /codex/arcane-compositry/active-defense
   section: 'lore',                 // which heading it sits under: 'how', 'lore' or 'ref'
   kicker: 'Active Defense',        // small gold line above the title
   title: 'Guard, Dodge, Parry & Block',
@@ -255,7 +256,7 @@ Arcane Intent, and the two cheat-sheet tables.
 | Small italic footnote              | `<p class="fine">...</p>`                            |
 | Two columns side by side           | `<div class="grid cols-2"><div>left</div><div>right</div></div>` |
 | A live calculator                  | `<div data-calc="guard"></div>` (ids are in `calculators.js`) |
-| A link to another chapter          | `<a href="/codex/momentum-dice">Momentum Dice</a>` (the older `#/codex/...` form works too) |
+| A link to another chapter          | `<a href="/codex/arcane-compositry/momentum-dice">Momentum Dice</a>` (the older `/codex/momentum-dice` and `#/codex/...` forms work too) |
 
 ### Add a new chapter
 
@@ -310,6 +311,7 @@ data/                the lists you can edit by hand
   classes.js             classes
   subclasses.js          subclasses (each names its parent class)
   npcs.js                NPCs & enemies - DM only, never sent to players
+  books/                 the Codex library: one .md file per rulebook + index.js listing them
 shared/rules/        the game rules: formulas, tables, codex text, sheet shape, rulesets (server + browser)
 web/                 the React front end (TypeScript, Tailwind, shadcn/ui)
   index.html
