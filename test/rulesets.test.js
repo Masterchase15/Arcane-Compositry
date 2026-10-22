@@ -81,3 +81,18 @@ test('editing a ruleset entry keeps its ruleset and marks it as an edit', async 
   assert.equal(edited.ruleset, 'arcane');
   assert.equal(edited.origin, 'override');
 });
+
+test('a DM can switch on a library expansion and file homebrew under it', async () => {
+  const camp = (await dm.post('/groups', { name: 'Xanathar table', rulesets: ['arcane', 'xge'] })).body.group;
+  assert.deepEqual(camp.rulesets, ['dnd5e', 'arcane', 'xge']);
+  const opts = { group: camp.id };
+  const sub = { name: 'Table Scout', className: 'Ranger', description: 'From our copy of the book.', ruleset: 'xge' };
+  const saved = await dm.post('/catalog/subclasses', sub, opts);
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.entry.ruleset, 'xge');
+  const has = async () => (await dm.get('/subclasses', opts)).body.subclasses.some((s) => s.name === 'Table Scout');
+  assert.equal(await has(), true);
+  await dm.put('/group/rulesets', { rulesets: ['arcane'] }, opts);
+  assert.equal(await has(), false, 'hidden while the expansion is off');
+  assert.equal((await dm.post('/catalog/subclasses', { ...sub, name: 'Another' }, opts)).status, 400, 'and nothing new can be filed under it');
+});

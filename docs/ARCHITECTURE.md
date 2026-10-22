@@ -240,7 +240,10 @@ Several campaigns can share one site. Each campaign is a **group**:
 The data files hold published rules, grouped into **rulesets**
 (`shared/rules/rulesets.js`): **D&D 5th Edition** (SRD 5.2, always on) and the
 **Arcane Compositry** expansion (Components, Compositry spells, Catalysts, Mana,
-Attack Chains, Guard, Momentum - explained by the Codex). Every entry has a
+Attack Chains, Guard, Momentum - explained by the Codex), plus the library's
+other expansions, **Xanathar's Guide to Everything** and **Arcana Unleashed**.
+Those two bring no bundled entries: a DM files the options their table uses
+as homebrew under them (the Ruleset box in the DM forms). Every entry has a
 `ruleset`: its own field, or its file's default (`LIST_DEFS` in
 `server/catalog.js`; Catalyst items count as Arcane Compositry).
 

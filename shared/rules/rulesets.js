@@ -32,13 +32,29 @@ export const RULESETS = [
     summary: 'A magic system for 5e: build spells from Components, a Form and a Potency, and cast them with Mana instead of spell slots. Adds Catalysts, Attack Chains, Guard and Momentum Dice.',
     about: '/codex/arcane-compositry', // its book in the Codex library (data/books/index.js) explains it
   },
+  // The library's other expansions. The site bundles no spells, items or classes from
+  // them: a DM adds the options their table uses as homebrew, filed under the expansion.
+  {
+    id: 'xge',
+    name: "Xanathar's Guide to Everything",
+    short: 'XGE',
+    summary: 'Subclasses and character options, downtime, magic item rewards and more spells. Add the options your table uses as homebrew, filed under this expansion.',
+    about: '/codex/xanathars-guide-to-everything',
+  },
+  {
+    id: 'arcana-unleashed',
+    name: 'Arcana Unleashed',
+    short: 'AU',
+    summary: 'Backgrounds and feats, new spells, magical worlds and factions, and evolving magic items. Add the options your table uses as homebrew, filed under this expansion.',
+    about: '/codex/arcana-unleashed',
+  },
 ];
 
 export const RULESET_IDS = RULESETS.map((r) => r.id);
 export const BASE_RULESET = 'dnd5e';
 export const ARCANE = 'arcane';
-/** What a campaign uses if nothing was chosen (and what campaigns made before rulesets existed got). */
-export const DEFAULT_RULESETS = [...RULESET_IDS];
+/** What a new campaign uses if nothing was chosen (and what campaigns made before rulesets existed got). */
+export const DEFAULT_RULESETS = [BASE_RULESET, ARCANE];
 
 export const findRuleset = (id) => RULESETS.find((r) => r.id === id) ?? null;
 

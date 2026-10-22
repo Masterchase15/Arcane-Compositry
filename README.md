@@ -9,7 +9,9 @@ Everything a Dungeons & Dragons campaign needs, for players and DMs:
   roster, and private session notes and lore.
 - **Rulesets:** D&D 5th Edition (the SRD 5.2), and the Arcane Compositry
   expansion - a magic system with its full rules codex, a Spellcrafter and a
-  calculator for every formula. Each campaign picks the ones it plays with.
+  calculator for every formula. Xanathar's Guide to Everything and Arcana
+  Unleashed can be switched on too - a DM adds the options their table uses as
+  homebrew, filed under that expansion. Each campaign picks the ones it plays with.
 
 Several campaigns can share one site. Works on desktop and phones and can be
 installed as a web app.

@@ -97,7 +97,7 @@ export function RulesetPicker({ value, onChange, disabled }: { value: string[]; 
  * (e.g. the Spellcrafter in a campaign that does not use Arcane Compositry).
  */
 export function RulesetOff({ ruleset, what }: { ruleset: string; what: string }) {
-  const { group } = useScope();
+  const { group, rulesets } = useScope();
   const { setBrowse } = useSession();
   const r = findRuleset(ruleset);
   return (
@@ -108,7 +108,7 @@ export function RulesetOff({ ruleset, what }: { ruleset: string; what: string })
           ? <>{group.name} does not use {r?.name}{group.role === 'dm' ? <>. You can turn it on in the campaign's <Link className="font-semibold underline underline-offset-4" to={`/campaign/${group.id}?tab=players`}>Group tab</Link>.</> : '. Its DM can turn it on.'}</>
           : <>{r?.name} is switched off in the Rulesets filter above.</>}
       </p>
-      {!group && <button type="button" className="font-semibold text-primary underline underline-offset-4" onClick={() => setBrowse({ rulesets: [...RULESETS.map((x: any) => x.id)] })}>Turn every ruleset on</button>}
+      {!group && <button type="button" className="font-semibold text-primary underline underline-offset-4" onClick={() => setBrowse({ rulesets: [...rulesets, ruleset] })}>Turn {r?.name} on</button>}
     </div>
   );
 }

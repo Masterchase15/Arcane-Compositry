@@ -37,8 +37,11 @@ import { SearchInput, matchesWords } from '@/components/list';
 import { ErrorState, Loading } from '@/components/page';
 import { api, errorMessage } from '@/lib/api';
 import { invalidateLists, useCatalogList, useScope } from '@/lib/catalog';
-import { ARCANE, findRuleset } from '@shared/rules/rulesets.js';
+import { ARCANE, BASE_RULESET, findRuleset } from '@shared/rules/rulesets.js';
 import { cn } from '@/lib/utils';
+
+/** Lists whose entries always belong to Arcane Compositry. */
+const ARCANE_ONLY = ['compositry', 'components'];
 
 interface FormField {
   key: string; label: string; type?: string; value?: any; options?: any[]; required?: boolean; wide?: boolean; tall?: boolean; short?: boolean;
@@ -346,8 +349,18 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
 /** The add / edit dialog, built from the list's `fields`. `entry` is null for a new one. */
 function EntryForm({ listName, entry, onClose }: { listName: string; entry: any | null; onClose: () => void }) {
   const def = CATALOG[listName];
-  const arcane = useScope().uses(ARCANE);
+  const { uses, rulesets } = useScope();
+  const arcane = uses(ARCANE);
   const fields = def.fields().filter((f) => arcane || !f.arcane);
+  // Which ruleset the entry is filed under (e.g. a subclass from Xanathar's Guide), when the
+  // campaign uses more than one. Compositry spells and Components are always Arcane Compositry.
+  if (rulesets.length > 1 && !ARCANE_ONLY.includes(listName)) {
+    fields.splice(1, 0, {
+      key: 'ruleset', label: 'Ruleset', type: 'select', value: entry?.ruleset ?? BASE_RULESET,
+      options: rulesets.map((id) => ({ value: id, label: findRuleset(id)?.name ?? id })),
+      hint: 'The book or expansion it comes from. It is hidden while that ruleset is switched off.',
+    });
+  }
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const current = (f: FormField) => (entry && f.get ? f.get(entry) : entry?.[f.key]) ?? f.value ?? (f.type === 'checks' || f.type === 'list' ? [] : '');
