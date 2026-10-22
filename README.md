@@ -357,6 +357,15 @@ everything up. Passwords are stored only as salted hashes.
 
 Arcane Compositry is an unofficial, fan-made expansion. Dungeons & Dragons is a
 trademark of Wizards of the Coast; this project is not affiliated with or
-endorsed by them. The example Codified spells and item statistics are drawn
-from the System Reference Document 5.2, used under CC-BY-4.0. Class and
-subclass entries are brief original summaries for table reference.
+endorsed by them. Class and subclass entries are brief original summaries for
+table reference.
+
+The D&D 5th Edition spells (`data/spells/codified.js`) and the weapons, armor
+and magic items marked `source: 'SRD 5.2'` (`data/items.js`) use game
+statistics from the System Reference Document 5.2; their descriptions are
+short summaries in our own words, not the SRD text.
+
+This work includes material from the System Reference Document 5.2 ("SRD 5.2")
+by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The
+SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International
+License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
