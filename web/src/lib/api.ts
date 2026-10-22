@@ -2,7 +2,7 @@
  * lib/api.ts - how the React app talks to the server (server/api.js is the other side).
  *
  * Every request carries ?group=<id> of the campaign the current page is using,
- * so the server knows whose homebrew, notes and party to use. That campaign is
+ * so the server knows whose rulesets, homebrew, notes and party to use. That campaign is
  * set by <GroupScope> (lib/catalog.tsx) before a page draws; pass
  * { group: id } (or null) to send a different one.
  */
@@ -23,6 +23,7 @@ export interface Group {
   id: string;
   name: string;
   role: Role;
+  rulesets: string[]; // ids from shared/rules/rulesets.js
   inviteCode?: string; // only for the campaign's DMs
 }
 

@@ -25,6 +25,7 @@
 import { db } from './db.js';
 import * as auth from './auth.js';
 import { fail } from './http.js';
+import { parseRulesets } from '../shared/rules/rulesets.js';
 import * as authRoutes from './routes/auth.js';
 import * as emailRoutes from './routes/email.js';
 import * as campaignRoutes from './routes/campaigns.js';
@@ -66,9 +67,9 @@ function currentGroup(user, url) {
   const id = url.searchParams.get('group');
   if (!user || !id) return null;
   const row = db
-    .prepare('SELECT g.id, g.name, g.invite_code, m.role FROM memberships m JOIN groups g ON g.id = m.group_id WHERE m.group_id = ? AND m.user_id = ?')
+    .prepare('SELECT g.id, g.name, g.invite_code, g.rulesets, m.role FROM memberships m JOIN groups g ON g.id = m.group_id WHERE m.group_id = ? AND m.user_id = ?')
     .get(id, user.id);
-  return row ? { id: row.id, name: row.name, inviteCode: row.invite_code, role: row.role } : null;
+  return row ? { id: row.id, name: row.name, inviteCode: row.invite_code, role: row.role, rulesets: parseRulesets(row.rulesets) } : null;
 }
 
 export async function handleApi(req, res, url) {

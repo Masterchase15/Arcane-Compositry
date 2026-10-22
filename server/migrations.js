@@ -139,6 +139,10 @@ export const MIGRATIONS = [
      expires_at INTEGER NOT NULL
    );
    CREATE INDEX email_tokens_user ON email_tokens(user_id);`,
+
+  // 7 - Rulesets (shared/rules/rulesets.js): the ones each campaign uses, as a JSON list of ids.
+  //     Campaigns that existed before get every ruleset, so nothing disappears for them.
+  `ALTER TABLE groups ADD COLUMN rulesets TEXT NOT NULL DEFAULT '["dnd5e","arcane"]';`,
 ];
 
 /** A group's invite code: 8 letters and digits, leaving out ones that look alike (0/O, 1/I/L). */

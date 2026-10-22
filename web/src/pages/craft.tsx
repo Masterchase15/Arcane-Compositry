@@ -5,7 +5,9 @@
  * the right shows Mana, damage, attack / Save DC and warnings, live.
  * All maths comes from shared/rules/formulas.js.
  *
- * With the Homebrew filter set to a campaign, that campaign's Components are
+ * Part of the Arcane Compositry ruleset: where that is switched off (a campaign
+ * without it, or the Rulesets filter) the page says so instead.
+ * With the Rulesets filter set to a campaign, that campaign's Components are
  * offered too. A campaign's DM can also save the finished spell straight into
  * the campaign's Compositry spell list ("Save to campaign homebrew").
  */
@@ -23,12 +25,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, NativeSelect, Options } from '@/components/fields';
-import { HomebrewBar } from '@/components/homebrew-bar';
+import { RulesetOff, RulesetsBar } from '@/components/rulesets-bar';
 import { characterLabel, useMyCharacters } from '@/components/list';
 import { PageHead } from '@/components/page';
 import { ResultTile } from '@/components/panel';
 import { api, errorMessage } from '@/lib/api';
-import { invalidateLists } from '@/lib/catalog';
+import { invalidateLists, useScope } from '@/lib/catalog';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { useSession } from '@/lib/session';
 import { appendComposition } from '@/lib/spellbook';
 import { cn } from '@/lib/utils';
@@ -45,7 +48,17 @@ const START = {
 };
 type State = typeof START;
 
+const HEAD = <PageHead kicker="Component(s) + Form + Potency + Modifiers = Composition" title="Spellcrafter">
+  Describe the magic; the numbers appear on the right. Nothing is forbidden - reality just charges more Mana.
+</PageHead>;
+
 export default function Craft() {
+  const { uses } = useScope();
+  if (uses(ARCANE)) return <Crafter />;
+  return <>{HEAD}<RulesetsBar /><RulesetOff ruleset={ARCANE} what="The Spellcrafter" /></>;
+}
+
+function Crafter() {
   const { user, groups } = useSession();
   const { characters } = useMyCharacters();
   const [s, setS] = useState<State>(START);
@@ -55,7 +68,7 @@ export default function Craft() {
   const [rollMessage, setRollMessage] = useState('');
   const [saveTo, setSaveTo] = useState('');
   const [toCampaign, setToCampaign] = useState(false);
-  const dmCampaigns = groups.filter((g) => g.role === 'dm');
+  const dmCampaigns = groups.filter((g) => g.role === 'dm' && g.rulesets.includes(ARCANE));
 
   // Choosing a character uses its PB, Invocation Modifier, Mana, Catalyst and known Components.
   useEffect(() => {
@@ -150,10 +163,8 @@ export default function Craft() {
 
   return (
     <>
-      <PageHead kicker="Component(s) + Form + Potency + Modifiers = Composition" title="Spellcrafter">
-        Describe the magic; the numbers appear on the right. Nothing is forbidden - reality just charges more Mana.
-      </PageHead>
-      <HomebrewBar />
+      {HEAD}
+      <RulesetsBar />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <form noValidate onSubmit={(e) => e.preventDefault()} className="space-y-6">
           {characters.length > 0 && (
@@ -397,9 +408,9 @@ function Breakdown({ title, rows, total, after }: { title: string; rows: [string
  * It starts hidden from players, so you can reveal it when they discover it.
  */
 function SaveToCampaign({ title, entry, onClose }: { title: string; entry: (school: string, hidden: boolean) => any; onClose: () => void }) {
-  const { groups, homebrew } = useSession();
-  const dm = groups.filter((g) => g.role === 'dm');
-  const [groupId, setGroupId] = useState((dm.find((g) => g.id === homebrew) ?? dm[0]).id);
+  const { groups, browse } = useSession();
+  const dm = groups.filter((g) => g.role === 'dm' && g.rulesets.includes(ARCANE));
+  const [groupId, setGroupId] = useState((dm.find((g) => g.id === browse.campaign) ?? dm[0]).id);
   const [school, setSchool] = useState<string>(SCHOOLS[0]);
   const [hidden, setHidden] = useState(true);
   const [error, setError] = useState<string | null>(null);

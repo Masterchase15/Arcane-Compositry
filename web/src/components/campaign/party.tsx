@@ -1,6 +1,6 @@
 /**
  * components/campaign/party.tsx - the campaign hub's "Party" tab (everyone) and
- * "Homebrew" tab (players).
+ * "Rules & homebrew" tab (players).
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -15,6 +15,8 @@ import { Panel } from '@/components/panel';
 import { api, errorMessage, type CharacterSummary, type Group } from '@/lib/api';
 import { useApi } from '@/lib/catalog';
 import { useSession } from '@/lib/session';
+import { useScope } from '@/lib/catalog';
+import { ARCANE, RULESETS } from '@shared/rules/rulesets.js';
 
 /** Every character in the campaign. You can open your own; DMs can open all of them. */
 export function PartyTab({ group }: { group: Group }) {
@@ -82,27 +84,48 @@ export function PartyTab({ group }: { group: Group }) {
   );
 }
 
-/** Players do not edit homebrew; this opens the site's lists with this campaign's homebrew included. */
+/**
+ * Players do not edit homebrew; this shows the campaign's rulesets and opens the
+ * site's lists with them and this campaign's homebrew.
+ */
 export function HomebrewTab({ group }: { group: Group }) {
-  const { setHomebrew } = useSession();
+  const { setBrowse } = useSession();
+  const { uses } = useScope();
   const navigate = useNavigate();
-  const lists: [string, LucideIcon, string][] = [
-    ['/spells/compositry', Leaf, 'Compositry spells'], ['/spells/codified', ScrollText, 'Codified spells'],
-    ['/spells/components', Leaf, 'Physical & Aspectual Components'], ['/items', Sword, 'Items & Weapons'], ['/classes', Shield, 'Classes & subclasses'],
-    ['/craft', Sparkles, 'Spellcrafter'],
+  const lists: [string, LucideIcon, string, string?][] = [
+    ['/spells/compositry', Leaf, 'Compositry spells', ARCANE], ['/spells/codified', ScrollText, uses(ARCANE) ? 'Codified spells' : 'Spells'],
+    ['/spells/components', Leaf, 'Physical & Aspectual Components', ARCANE], ['/items', Sword, 'Items & Weapons'], ['/classes', Shield, 'Classes & subclasses'],
+    ['/craft', Sparkles, 'Spellcrafter', ARCANE],
   ];
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground">Your DM may have added or changed spells, items and classes for {group.name}. Open a list with this campaign's homebrew included:</p>
+      <RulesetCards rulesets={group.rulesets} />
+      <p className="text-muted-foreground">Your DM may also have added or changed spells, items and classes for {group.name} (marked <b>Homebrew</b>). Open a list with this campaign's rules:</p>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-        {lists.map(([to, Icon, label]) => (
-          <button key={to} type="button" onClick={() => { setHomebrew(group.id); navigate(to); }}
+        {lists.filter(([, , , needs]) => !needs || uses(needs)).map(([to, Icon, label]) => (
+          <button key={to} type="button" onClick={() => { setBrowse({ campaign: group.id }); navigate(to); }}
             className="flex items-center gap-3 surface p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg">
             <span className="flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground"><Icon className="size-5" /></span>
             <b className="font-serif">{label}</b>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** The rulesets a campaign uses, one card each (the Rules tab, and the DM's Group tab shows the same). */
+export function RulesetCards({ rulesets }: { rulesets: string[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {RULESETS.filter((r: any) => rulesets.includes(r.id)).map((r: any) => (
+        <div key={r.id} className="surface p-4">
+          <p className="kicker">Ruleset{r.base ? ' · Core rules' : ' · Expansion'}</p>
+          <h3 className="font-serif text-lg font-bold">{r.name}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{r.summary}</p>
+          {r.about && <Link className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-4" to={r.about}>Read the rules in the Codex</Link>}
+        </div>
+      ))}
     </div>
   );
 }

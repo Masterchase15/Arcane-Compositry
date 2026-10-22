@@ -77,7 +77,7 @@ function changePassword({ user, body }) {
 function me({ user }) {
   const groups = user
     ? db.prepare(
-        `SELECT g.id, g.name, g.invite_code, m.role FROM memberships m JOIN groups g ON g.id = m.group_id
+        `SELECT g.id, g.name, g.invite_code, g.rulesets, m.role FROM memberships m JOIN groups g ON g.id = m.group_id
           WHERE m.user_id = ? ORDER BY g.name COLLATE NOCASE`
       ).all(user.id).map(groupOut)
     : [];

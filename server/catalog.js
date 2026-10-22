@@ -26,6 +26,13 @@
  *   in the `group_visibility` table, so it works for file entries too. An
  *   entry in a data file can also start hidden by writing  hidden: true.
  *
+ * RULESETS
+ *   Every entry belongs to one ruleset (shared/rules/rulesets.js): its own
+ *   `ruleset:` field, or its list's default below (Catalyst items count as
+ *   Arcane Compositry). A campaign only receives entries from the rulesets its
+ *   DM picked. What the DM adds on the site is the campaign's homebrew
+ *   (origin 'custom'; an edited file entry is origin 'override').
+ *
  * The data files are re-read automatically whenever they change on disk, so
  * you can edit a file, save, and refresh the browser - no restart needed.
  *
@@ -39,6 +46,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { db } from './db.js';
 import { SCHOOLS, ANY_CLASS, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '../shared/rules/constants.js';
+import { RULESET_IDS, BASE_RULESET, ARCANE } from '../shared/rules/rulesets.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ABILITY_KEYS = ABILITIES.map((a) => a.key);
@@ -220,19 +228,27 @@ function validateNpc(s, errors) {
 
 // ── The lists ────────────────────────────────────────────────────────────────
 const byName = (a, b) => a.name.localeCompare(b.name);
+// `ruleset`: the ruleset an entry of this list belongs to unless it names its own.
 const LIST_DEFS = {
-  codified:   { file: 'data/spells/codified.js',   sort: (a, b) => a.level - b.level || byName(a, b),     validate: (s, e, ctx) => validateSpell('codified', s, e, ctx) },
-  compositry: { file: 'data/spells/compositry.js', sort: (a, b) => a.potency - b.potency || byName(a, b), validate: (s, e, ctx) => validateSpell('compositry', s, e, ctx) },
-  components: { file: 'data/components.js',        sort: (a, b) => b.kind.localeCompare(a.kind) || byName(a, b), validate: validateComponent },
-  items:      { file: 'data/items.js',             sort: byName, validate: validateItem },
-  classes:    { file: 'data/classes.js',           sort: byName, validate: validateClass },
-  subclasses: { file: 'data/subclasses.js',        sort: (a, b) => a.className.localeCompare(b.className) || byName(a, b), validate: validateSubclass },
-  npcs:       { file: 'data/npcs.js',              sort: byName, validate: validateNpc, dmOnly: true },
+  codified:   { file: 'data/spells/codified.js',   ruleset: BASE_RULESET, sort: (a, b) => a.level - b.level || byName(a, b),     validate: (s, e, ctx) => validateSpell('codified', s, e, ctx) },
+  compositry: { file: 'data/spells/compositry.js', ruleset: ARCANE, sort: (a, b) => a.potency - b.potency || byName(a, b), validate: (s, e, ctx) => validateSpell('compositry', s, e, ctx) },
+  components: { file: 'data/components.js',        ruleset: ARCANE, sort: (a, b) => b.kind.localeCompare(a.kind) || byName(a, b), validate: validateComponent },
+  items:      { file: 'data/items.js',             ruleset: BASE_RULESET, sort: byName, validate: validateItem },
+  classes:    { file: 'data/classes.js',           ruleset: BASE_RULESET, sort: byName, validate: validateClass },
+  subclasses: { file: 'data/subclasses.js',        ruleset: BASE_RULESET, sort: (a, b) => a.className.localeCompare(b.className) || byName(a, b), validate: validateSubclass },
+  npcs:       { file: 'data/npcs.js',              ruleset: BASE_RULESET, sort: byName, validate: validateNpc, dmOnly: true },
 };
 /** True for lists that players must never receive (the route that serves them is DM-only). */
 export const isDmOnly = (listName) => !!LIST_DEFS[listName]?.dmOnly;
 export const LISTS = Object.keys(LIST_DEFS);
 export const listFile = (listName) => path.join(ROOT, LIST_DEFS[listName].file);
+
+/** The ruleset an entry belongs to: its own `ruleset` field, or its list's default. */
+export function rulesetOf(listName, entry) {
+  if (RULESET_IDS.includes(entry?.ruleset)) return entry.ruleset;
+  if (listName === 'items' && entry?.category === 'Catalyst') return ARCANE;
+  return LIST_DEFS[listName].ruleset;
+}
 
 /**
  * Checks one entry and returns a cleaned-up copy.
@@ -242,7 +258,9 @@ export async function validateEntry(listName, raw, groupId = null) {
   const errors = [];
   const needsClasses = ['codified', 'compositry', 'subclasses'].includes(listName);
   const ctx = { classNames: needsClasses ? (await getList('classes', { groupId })).map((c) => c.name) : [] };
-  const entry = LIST_DEFS[listName].validate(raw && typeof raw === 'object' ? raw : {}, errors, ctx);
+  const input = raw && typeof raw === 'object' ? raw : {};
+  const entry = LIST_DEFS[listName].validate(input, errors, ctx);
+  entry.ruleset = rulesetOf(listName, { ...entry, ruleset: input.ruleset });
   return { entry, errors };
 }
 
@@ -288,20 +306,26 @@ async function readFile(listName, file, mtime, previous) {
 
 /**
  * File entries + one group's DM-page entries, merged and sorted.
- * @param {{ groupId?: string|null, includeHidden?: boolean }} options
+ * @param {{ groupId?: string|null, includeHidden?: boolean, rulesets?: string[]|null }} options
  *   groupId: whose DM-page edits to merge in (null = the files only)
  *   includeHidden: false for what players may see
+ *   rulesets: only entries from these rulesets (null = every ruleset)
  */
-export async function getList(listName, { groupId = null, includeHidden = true } = {}) {
+export async function getList(listName, { groupId = null, includeHidden = true, rulesets = null } = {}) {
   const merged = new Map((await loadFile(listName)).map((s) => [s.id, s]));
   const rows = db.prepare('SELECT id, data FROM custom_entries WHERE group_id = ? AND list = ?').all(groupId, listName);
   for (const row of rows) {
-    merged.set(row.id, { ...JSON.parse(row.data), id: row.id, origin: merged.has(row.id) ? 'override' : 'custom' });
+    const entry = JSON.parse(row.data);
+    // Saved before rulesets existed? An edit keeps the ruleset of the entry it replaces.
+    const ruleset = RULESET_IDS.includes(entry.ruleset) ? entry.ruleset : merged.get(row.id)?.ruleset ?? rulesetOf(listName, entry);
+    merged.set(row.id, { ...entry, ruleset, id: row.id, origin: merged.has(row.id) ? 'override' : 'custom' });
   }
   // The DM's hidden/public choice (if any) wins over what the entry itself says.
   const visibility = new Map(db.prepare('SELECT id, hidden FROM group_visibility WHERE group_id = ? AND list = ?').all(groupId, listName).map((r) => [r.id, !!r.hidden]));
   const all = [...merged.values()].map((e) => ({ ...e, hidden: visibility.has(e.id) ? visibility.get(e.id) : !!e.hidden }));
-  return all.filter((e) => includeHidden || !e.hidden).sort(LIST_DEFS[listName].sort);
+  return all
+    .filter((e) => (includeHidden || !e.hidden) && (!rulesets || rulesets.includes(e.ruleset)))
+    .sort(LIST_DEFS[listName].sort);
 }
 
 // DM-page entries for every list share one table; the `list` column says which list a row belongs to.

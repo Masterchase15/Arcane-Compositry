@@ -1,7 +1,8 @@
 /**
  * components/sheet/core-tab.tsx - the sheet's "Core & Combat" tab (page 1 of the
  * printed sheet): identity, vitals, abilities and skills, hit points, Attack
- * Chains, Momentum Dice and weapons.
+ * Chains, Momentum Dice and weapons. Attack Chains and Momentum Dice are
+ * Arcane Compositry: they only show where that ruleset is in use.
  */
 import { useState } from 'react';
 import { RefreshCw, Sword } from 'lucide-react';
@@ -16,7 +17,8 @@ import { Field } from '@/components/fields';
 import { Panel } from '@/components/panel';
 import { MomentumTracker } from '@/components/calculator';
 import { Picker } from '@/components/details';
-import { subclassesOf, useItems, useSubclasses } from '@/lib/catalog';
+import { subclassesOf, useItems, useScope, useSubclasses } from '@/lib/catalog';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { weaponRow } from '@/lib/spellbook';
 import { AreaF, AutoF, AutoInput, CellF, CheckF, ListRow, Pips, SelectF, SmallLabel, Stepper, TextF, getPath, setPath, useSheet } from './fields';
 import { AddRow, DetailsButton, RemoveRow, useDetails } from './rows';
@@ -32,6 +34,7 @@ export function CoreTab() {
   const details = useDetails();
   const [picking, setPicking] = useState(false);
   const cls = findClass(c.identity.className);
+  const arcane = useScope().uses(ARCANE);
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -75,6 +78,7 @@ export function CoreTab() {
         <Field label="Death saves - failures"><Pips path="hp.deathFail" label="Death save failure" fail /></Field>
       </Panel>
 
+      {arcane && <>
       <Panel title="Attack Chains & Active Defense" bodyClassName="space-y-3">
         <div className={grid3}>
           <AutoF k="chainLength" label="Chain length" />
@@ -115,13 +119,15 @@ export function CoreTab() {
         <p className="text-sm"><b>d6</b> Break 5-6 | <b>d8</b> Topple 7-8 | <b>d10</b> Daze 9-10 | <b>d12</b> Launch/Smash 11-12</p>
       </Panel>
 
+      </>}
+
       <Panel title="Weapons & Attacks" className="lg:col-span-2" bodyClassName="space-y-3">
         {c.weapons.length ? c.weapons.map((w: any, i: number) => (
           <ListRow key={i} actions={<>{w.itemId && <DetailsButton onClick={() => details.show({ kind: 'item', id: w.itemId })} />}<RemoveRow list="weapons" index={i} /></>}>
             <CellF list="weapons" index={i} field="name" label="Name" />
             <CellF list="weapons" index={i} field="atk" label="Atk" />
             <CellF list="weapons" index={i} field="damage" label="Damage / type" />
-            <CellF list="weapons" index={i} field="chain" label="Chain" />
+            {arcane && <CellF list="weapons" index={i} field="chain" label="Chain" />}
             <CellF list="weapons" index={i} field="notes" label="Notes" className="col-span-2 sm:col-span-4" />
           </ListRow>
         )) : <p className="text-sm text-muted-foreground">No weapons yet.</p>}

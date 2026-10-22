@@ -4,11 +4,12 @@ Everything a Dungeons & Dragons campaign needs, for players and DMs:
 
 - **Players:** saved character sheets that do the maths, the campaign's party
   and homebrew, and searchable spells, items and classes.
-- **DMs:** campaigns with invite codes, homebrew without code (hidden until you
-  publish it), an initiative tracker, an NPC and enemy roster, and private
-  session notes and lore.
-- **Built-in magic:** the Arcane Compositry expansion - the full rules codex, a
-  Spellcrafter and a calculator for every formula.
+- **DMs:** campaigns with invite codes, a choice of rulesets, homebrew without
+  code (hidden until you publish it), an initiative tracker, an NPC and enemy
+  roster, and private session notes and lore.
+- **Rulesets:** D&D 5th Edition (the SRD 5.2), and the Arcane Compositry
+  expansion - a magic system with its full rules codex, a Spellcrafter and a
+  calculator for every formula. Each campaign picks the ones it plays with.
 
 Several campaigns can share one site. Works on desktop and phones and can be
 installed as a web app.
@@ -48,11 +49,14 @@ then on the server run `npm run make-admin <your username>`. Run
 `npm run make-admin` with nothing after it to list the current admins.
 
 **Campaigns.** Everything on the site works without one. To run a game, open
-**Campaigns**, start a campaign - you become its DM - and give your players its
-invite code (inside the campaign, Group tab). Several campaigns can share the
-site, each with its own party, notes and homebrew. Inside a campaign a gold
-banner shows under the top bar; the spell, item and class lists have a
-**Homebrew** filter to include a campaign's homebrew while browsing. When the site is online, set `INVITE_CODE` so only people with an
+**Campaigns**, start a campaign - you become its DM - pick its **rulesets**
+(5e is always on; switch Arcane Compositry off to play plain 5e with spell
+slots), and give your players its invite code (inside the campaign, Group tab,
+where you can also change the rulesets). Several campaigns can share the site,
+each with its own rulesets, party, notes and homebrew - what the DM adds is
+marked **Homebrew**. Inside a campaign a gold banner shows under the top bar;
+the spell, item and class lists have a **Rulesets** filter to switch rulesets
+or use a campaign's rules and homebrew while browsing. When the site is online, set `INVITE_CODE` so only people with an
 invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 
 ## What is where
@@ -69,6 +73,7 @@ invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 | Hide something from players, or publish it  | Your campaign (as DM): the **Hide / Publish** button on any row - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md#hidden-or-public) |
 | Add or edit an item, weapon or class        | Your campaign (as DM), or `data/items.js` / `data/classes.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md) |
 | Add a school, Form or item category         | `shared/rules/constants.js`                        |
+| Add a ruleset (an expansion)                | `shared/rules/rulesets.js` - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#rulesets-and-homebrew) |
 | Add a field to the character sheet          | `shared/rules/character.js` + a tab in `web/src/components/sheet/` |
 | Add a calculator                            | `web/src/lib/calculators.js`                       |
 | Change colours or fonts                     | top of `web/src/index.css` (fonts: `web/index.html`) |
@@ -305,7 +310,7 @@ data/                the lists you can edit by hand
   classes.js             classes
   subclasses.js          subclasses (each names its parent class)
   npcs.js                NPCs & enemies - DM only, never sent to players
-shared/rules/        the game rules: formulas, tables, codex text, sheet shape (server + browser)
+shared/rules/        the game rules: formulas, tables, codex text, sheet shape, rulesets (server + browser)
 web/                 the React front end (TypeScript, Tailwind, shadcn/ui)
   index.html
   public/            icons, app manifest, offline helper - copied as-is

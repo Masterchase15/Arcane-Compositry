@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, NativeSelect, Options } from '@/components/fields';
 import { DetailDialog, ItemDetail } from '@/components/details';
-import { HomebrewBar } from '@/components/homebrew-bar';
+import { OriginBadge, RulesetsBar } from '@/components/rulesets-bar';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { AddToCharacter, ListRow, matchesWords, ResultBar, SearchInput, useFilters, useMyCharacters } from '@/components/list';
 import { Empty, ErrorState, Loading, PageHead } from '@/components/page';
 import { useItems, useScope } from '@/lib/catalog';
@@ -27,7 +28,8 @@ const KEYS = ['q', 'category', 'rarity', 'attunement', 'item'] as const;
 const summary = (it: any) => [it.category, it.rarity !== 'Mundane' && it.rarity, it.damage, it.armorClass && `AC ${it.armorClass}`, it.attunement && 'Attunement'].filter(Boolean).join(' · ');
 
 export default function Items() {
-  const { group, isDM } = useScope();
+  const { group, isDM, uses } = useScope();
+  const arcane = uses(ARCANE);
   const { data: items, error, reload } = useItems();
   const { characters } = useMyCharacters();
   const { values: f, set } = useFilters(KEYS);
@@ -45,14 +47,16 @@ export default function Items() {
   return (
     <>
       <PageHead kicker="Gear for the road" title="Items & Weapons">
-        Weapons, armor, adventuring gear, magic items and Catalysts. Weapons list their Attack Chain trait where they have one.
+        {arcane
+          ? 'Weapons, armor, adventuring gear, magic items and Catalysts. Weapons list their Attack Chain trait where they have one.'
+          : 'Weapons, armor, adventuring gear and magic items.'}
       </PageHead>
-      <HomebrewBar />
+      <RulesetsBar />
 
       <form role="search" onSubmit={(e) => e.preventDefault()} className="surface mb-5 grid gap-4 p-4 sm:p-5 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         <Field label="Search" htmlFor="q"><SearchInput id="q" value={f.q} onChange={(v) => set({ q: v })} placeholder="Name, effect, property or tag" /></Field>
         <Field label="Category" htmlFor="category">
-          <NativeSelect id="category" value={f.category} onChange={(e) => set({ category: e.target.value })}><option value="">Any category</option><Options options={ITEM_CATEGORIES} /></NativeSelect>
+          <NativeSelect id="category" value={f.category} onChange={(e) => set({ category: e.target.value })}><option value="">Any category</option><Options options={ITEM_CATEGORIES.filter((c: string) => arcane || c !== 'Catalyst')} /></NativeSelect>
         </Field>
         <Field label="Rarity" htmlFor="rarity">
           <NativeSelect id="rarity" value={f.rarity} onChange={(e) => set({ rarity: e.target.value })}><option value="">Any rarity</option><Options options={ITEM_RARITIES} /></NativeSelect>
@@ -74,7 +78,7 @@ export default function Items() {
             {shown.map((it) => (
               <ListRow key={it.id} onClick={() => set({ item: it.id })}
                 badge={BADGE[it.category] || 'It'} badgeSub={it.category.split(' ')[0]} title={it.name}
-                meta={<>{summary(it)}{it.hidden && <Badge variant="outline" className="ml-1.5 border-gold-line bg-gold-soft text-gold-ink">Hidden</Badge>}</>}
+                meta={<>{summary(it)}<OriginBadge entry={it} className="ml-1.5" />{it.hidden && <Badge variant="outline" className="ml-1.5 border-gold-line bg-gold-soft text-gold-ink">Hidden</Badge>}</>}
                 right={it.cost} />
             ))}
           </div>

@@ -6,8 +6,8 @@
  *  2. Add a lazy import and a <Route> below.
  *  3. Optionally add it to NAV in components/layout.tsx so it shows in the menu.
  *
- * Browsing pages sit in <BrowseScope>: they use the Homebrew filter's campaign
- * (or none). The campaign hub sits in <CampaignScope>: it uses its own campaign
+ * Browsing pages sit in <BrowseScope>: they use the Rulesets filter's campaign
+ * (or none, and the rulesets it has switched on). The campaign hub sits in <CampaignScope>: it uses its own campaign
  * and shows the gold campaign banner. (See lib/catalog.tsx.)
  */
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
@@ -98,11 +98,11 @@ export function App() {
   );
 }
 
-/** Browsing pages: the Homebrew filter's campaign, or the standard rules. */
+/** Browsing pages: the Rulesets filter's campaign, or no campaign and the rulesets it has switched on. */
 function BrowseScope() {
-  const { homebrew } = useSession();
+  const { browse } = useSession();
   return (
-    <GroupScope groupId={homebrew}>
+    <GroupScope groupId={browse.campaign} rulesets={browse.rulesets}>
       <Main>
         <Suspense fallback={<Loading />}><Outlet /></Suspense>
       </Main>

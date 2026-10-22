@@ -1,6 +1,6 @@
 /**
  * components/campaign/group.tsx - the campaign hub's "Group" tab (DMs only):
- * the invite code, the campaign's name, and its members (make DM, remove).
+ * the invite code, the campaign's name, its rulesets, and its members (make DM, remove).
  */
 import { useState } from 'react';
 import { Copy, Crown, RefreshCw } from 'lucide-react';
@@ -13,7 +13,9 @@ import { useConfirm } from '@/components/confirm';
 import { ErrorState, Loading } from '@/components/page';
 import { Panel } from '@/components/panel';
 import { api, errorMessage, type Group } from '@/lib/api';
-import { useApi } from '@/lib/catalog';
+import { invalidateLists, useApi } from '@/lib/catalog';
+import { RulesetPicker } from '@/components/rulesets-bar';
+import { findRuleset } from '@shared/rules/rulesets.js';
 import { useSession } from '@/lib/session';
 
 interface Member { id: string; username: string; displayName: string; role: 'dm' | 'player'; characters: number }
@@ -23,6 +25,17 @@ export function GroupTab({ group }: { group: Group }) {
   const confirm = useConfirm();
   const { data, error, reload } = useApi<{ members: Member[] }>('/group/members');
   const [name, setName] = useState(group.name);
+  const [savingRules, setSavingRules] = useState(false);
+
+  const setRulesets = async (rulesets: string[]) => {
+    const off = group.rulesets.filter((r) => !rulesets.includes(r)).map((r) => findRuleset(r)?.name);
+    if (off.length && !await confirm({ title: `Turn off ${off.join(', ')}?`, confirmLabel: 'Turn off',
+      message: `Its spells, items and rules disappear from this campaign, and characters in it stop showing them. Nothing is deleted - turning it back on brings everything back, homebrew included.` })) return;
+    setSavingRules(true);
+    try { await api('PUT', '/group/rulesets', { rulesets }); await refresh(); invalidateLists(); toast.success('Rulesets saved.'); }
+    catch (err) { toast.error(errorMessage(err)); }
+    setSavingRules(false);
+  };
 
   const newCode = async () => {
     if (!await confirm({ title: 'Make a new invite code?', message: 'The current code stops working. People already in the campaign stay in.', confirmLabel: 'New code' })) return;
@@ -65,6 +78,13 @@ export function GroupTab({ group }: { group: Group }) {
           </form>
         </Panel>
       </div>
+
+      <Panel title="Rulesets" bodyClassName="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          The rules this campaign plays with. Players only see spells, items, classes and sheet sections from these, plus your homebrew.
+        </p>
+        <RulesetPicker value={group.rulesets} onChange={setRulesets} disabled={savingRules} />
+      </Panel>
 
       <section>
         <h3 className="mb-3 text-xl font-semibold">Members</h3>

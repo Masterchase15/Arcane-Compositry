@@ -3,9 +3,11 @@
  * classes, Components, subclasses and NPCs (the Spells, Items & Weapons,
  * Classes and NPCs tabs of the campaign hub, pages/campaign.tsx).
  *
- * Entries saved here go to the database, for this campaign only. Entries from
- * the data/ files are shown as "File" - editing one here saves an override;
- * "Undo edits" brings the file version back.
+ * Entries saved here go to the database, for this campaign only: they are the
+ * campaign's HOMEBREW. Entries from the data/ files are shown with their
+ * ruleset (5e, Arcane Compositry) - editing one here saves an override, marked
+ * "Homebrew (edited)"; "Undo edits" brings the ruleset's version back.
+ * Fields marked `arcane: true` only show when the campaign uses Arcane Compositry.
  *
  * Every spell, Component, item and class is either PUBLIC (players see it) or
  * HIDDEN (only the campaign's DMs see it). The Hide / Publish button flips it,
@@ -34,12 +36,14 @@ import { Field, NativeSelect, Options } from '@/components/fields';
 import { SearchInput, matchesWords } from '@/components/list';
 import { ErrorState, Loading } from '@/components/page';
 import { api, errorMessage } from '@/lib/api';
-import { invalidateLists, useCatalogList } from '@/lib/catalog';
+import { invalidateLists, useCatalogList, useScope } from '@/lib/catalog';
+import { ARCANE, findRuleset } from '@shared/rules/rulesets.js';
 import { cn } from '@/lib/utils';
 
 interface FormField {
   key: string; label: string; type?: string; value?: any; options?: any[]; required?: boolean; wide?: boolean; tall?: boolean; short?: boolean;
   hint?: string; placeholder?: string; min?: number; suggestions?: string[]; toText?: (list: any[]) => string; get?: (e: any) => any;
+  arcane?: boolean; // only shown when the campaign uses Arcane Compositry
 }
 interface ListDef {
   noun: string; file: string; dmOnly?: boolean;
@@ -141,9 +145,9 @@ export const CATALOG: Record<string, ListDef> = {
       { key: 'armorClass', label: 'Armor Class (armor)', placeholder: '16' },
       { key: 'acBonus', label: 'AC bonus while in use', type: 'number', min: -20, value: 0, hint: 'Added to Armor Class automatically when ticked "In use" on a sheet. Cloak of Protection = 1, Shield = 2.' },
       { key: 'saveBonus', label: 'Save bonus while in use', type: 'number', min: -20, value: 0, hint: 'Added to every saving throw automatically.' },
-      { key: 'chainTrait', label: 'Attack Chain trait', wide: true, placeholder: '+1 maximum Chain Length.', hint: 'What it does in an Attack Chain (codex p.23). Copied to the sheet when a player adds the weapon.' },
-      { key: 'capacity', label: 'Capacity (Catalysts)', placeholder: '50' },
-      { key: 'throughput', label: 'Throughput (Catalysts)', placeholder: '5' },
+      { arcane: true, key: 'chainTrait', label: 'Attack Chain trait', wide: true, placeholder: '+1 maximum Chain Length.', hint: 'What it does in an Attack Chain (codex p.23). Copied to the sheet when a player adds the weapon.' },
+      { arcane: true, key: 'capacity', label: 'Capacity (Catalysts)', placeholder: '50' },
+      { arcane: true, key: 'throughput', label: 'Throughput (Catalysts)', placeholder: '5' },
       DESCRIPTION,
       ...SHARED_END,
     ],
@@ -154,8 +158,9 @@ export const CATALOG: Record<string, ListDef> = {
     fields: () => [
       { key: 'name', label: 'Name', required: true, wide: true },
       { key: 'hitDie', label: 'Hit Die', type: 'select', value: 8, options: [6, 8, 10, 12].map((n: any) => ({ value: n, label: `d${n}` })) },
-      { key: 'invocation', label: 'Invocation ability', type: 'select', value: 'int', options: abilityOptions, hint: 'The ability used for Arcane attacks and Save DC.' },
-      { key: 'caster', label: 'Mana pool', type: 'select', value: 'full', options: [{ value: 'full', label: 'Full caster (100%)' }, { value: 'partial', label: 'Partial caster (about 65%)' }, { value: 'martial', label: 'Martial (about 40%)' }] },
+      { key: 'invocation', label: 'Invocation / spellcasting ability', type: 'select', value: 'int', options: abilityOptions, hint: 'The ability used for spell attacks and Save DC.' },
+      { key: 'caster', label: 'Caster type', type: 'select', value: 'full', hint: 'Sets the Mana pool (Arcane Compositry) or the spell slots (plain 5e).',
+        options: [{ value: 'full', label: 'Full caster (100% Mana / full spell slots)' }, { value: 'partial', label: 'Partial caster (about 65% Mana / half spell slots)' }, { value: 'martial', label: 'Martial (about 40% Mana / no spell slots)' }] },
       { key: 'skillPicks', label: 'Skills chosen', type: 'number', value: 2 },
       { key: 'saves', label: 'Saving throw proficiencies (pick two)', type: 'checks', required: true, options: abilityOptions },
       { key: 'primaryAbility', label: 'Primary ability', placeholder: 'Intelligence' },
@@ -166,7 +171,7 @@ export const CATALOG: Record<string, ListDef> = {
       { key: 'armor', label: 'Armor training', placeholder: 'Light armor' },
       { key: 'tools', label: 'Tool proficiencies' },
       { key: 'equipment', label: 'Starting equipment', wide: true },
-      { key: 'compositry', label: 'In Arcane Compositry', type: 'textarea', hint: 'How the class plays with Mana, Attack Chains and Applied Thaumaturgy.' },
+      { arcane: true, key: 'compositry', label: 'In Arcane Compositry', type: 'textarea', hint: 'How the class plays with Mana, Attack Chains and Applied Thaumaturgy.' },
       { key: 'features', label: 'Class features', type: 'lines', toText: featureLines, hint: 'One per line:  Level | Feature name | What it does      e.g.  1 | Rune Carving | You can inscribe...' },
       { key: 'subclasses', label: 'Quick subclass list (optional)', type: 'lines', toText: subclassLines, hint: 'Better: add subclasses under Classes > Subclasses, where each feature gets its own description. This box is only a quick list - one per line:  Name | Description | 3 Feature; 6 Another feature' },
       ...SHARED_END,
@@ -181,7 +186,7 @@ export const CATALOG: Record<string, ListDef> = {
       { key: 'className', label: 'Parent class', type: 'select', value: CLASS_NAMES[0], options: [...CLASS_NAMES], hint: 'The subclass appears in the Subclasses section of this class\'s page.' },
       DESCRIPTION,
       { key: 'features', label: 'What it adds to the class', type: 'lines', toText: featureLines, hint: 'One feature per line:  Level | Feature name | What it does      e.g.  3 | Bramble Hide | While raging, attackers take 1d4 Piercing damage.' },
-      { key: 'compositry', label: 'In Arcane Compositry (optional)', type: 'textarea', hint: 'How it plays with Mana, Attack Chains or Applied Thaumaturgy.' },
+      { arcane: true, key: 'compositry', label: 'In Arcane Compositry (optional)', type: 'textarea', hint: 'How it plays with Mana, Attack Chains or Applied Thaumaturgy.' },
       ...SHARED_END,
     ],
   },
@@ -215,17 +220,17 @@ export const CATALOG: Record<string, ListDef> = {
       { key: 'bonusActions', label: 'Bonus actions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
       { key: 'reactions', label: 'Reactions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
       { key: 'legendary', label: 'Legendary actions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
-      { key: 'chainLength', label: 'Max Chain Length', placeholder: '3', hint: 'Baseline: 2 at CR 0-4, 3 at 5-10, 4 at 11-16, 5 at 17+.' },
-      { key: 'guard', label: 'Guard (blank = 2 + PB)' },
-      { key: 'momentum', label: 'Momentum Die / combat habits', wide: true, placeholder: 'Builds to d8, then spends on Topple.' },
+      { arcane: true, key: 'chainLength', label: 'Max Chain Length', placeholder: '3', hint: 'Baseline: 2 at CR 0-4, 3 at 5-10, 4 at 11-16, 5 at 17+.' },
+      { arcane: true, key: 'guard', label: 'Guard (blank = 2 + PB)' },
+      { arcane: true, key: 'momentum', label: 'Momentum Die / combat habits', wide: true, placeholder: 'Builds to d8, then spends on Topple.' },
       { key: 'invocation', label: 'Invocation ability (casters)', type: 'select', value: '', options: [{ value: '', label: 'None - not a Compositor' }, ...abilityOptions], hint: 'Arcane attack and Save DC are worked out from this and PB.' },
-      { key: 'maxPotency', label: 'Maximum Potency', type: 'select', value: 0, options: [{ value: 0, label: 'None' }, ...ROMAN.slice(1).map((r: any, i: any) => ({ value: i + 1, label: r }))] },
-      { key: 'mana', label: 'Mana', placeholder: '26' },
-      { key: 'temperament', label: 'Temperament', type: 'select', value: '', options: [{ value: '', label: 'Not set' }, 'Disciplined', 'Adaptive', 'Experimental'], hint: 'How often it improvises (codex p.18).' },
-      { key: 'physicals', label: 'Known Physicals', type: 'list', hint: 'Separate with commas.' },
-      { key: 'aspectuals', label: 'Known Aspects', type: 'list', hint: 'Separate with commas.' },
-      { key: 'forms', label: 'Known Forms', type: 'list', hint: 'Separate with commas.' },
-      { key: 'signatures', label: 'Signature Compositions', type: 'textarea' },
+      { arcane: true, key: 'maxPotency', label: 'Maximum Potency', type: 'select', value: 0, options: [{ value: 0, label: 'None' }, ...ROMAN.slice(1).map((r: any, i: any) => ({ value: i + 1, label: r }))] },
+      { arcane: true, key: 'mana', label: 'Mana', placeholder: '26' },
+      { arcane: true, key: 'temperament', label: 'Temperament', type: 'select', value: '', options: [{ value: '', label: 'Not set' }, 'Disciplined', 'Adaptive', 'Experimental'], hint: 'How often it improvises (codex p.18).' },
+      { arcane: true, key: 'physicals', label: 'Known Physicals', type: 'list', hint: 'Separate with commas.' },
+      { arcane: true, key: 'aspectuals', label: 'Known Aspects', type: 'list', hint: 'Separate with commas.' },
+      { arcane: true, key: 'forms', label: 'Known Forms', type: 'list', hint: 'Separate with commas.' },
+      { arcane: true, key: 'signatures', label: 'Signature Compositions', type: 'textarea' },
       { key: 'location', label: 'Location' },
       { key: 'faction', label: 'Faction' },
       { ...DESCRIPTION, label: 'Description & roleplay', hint: 'Appearance, voice, how to play them. Leave a blank line between paragraphs.' },
@@ -236,7 +241,9 @@ export const CATALOG: Record<string, ListDef> = {
 };
 
 // ── One editable list ────────────────────────────────────────────────────────
-const ORIGIN: Record<string, [string, string]> = { file: ['File', ''], custom: ['Added here', 'bg-ok/15 text-ok'], override: ['Edited here', 'border-gold-line bg-gold-soft text-gold-ink'] };
+const ORIGIN: Record<string, [string, string]> = { custom: ['Homebrew', 'bg-ok/15 text-ok'], override: ['Homebrew (edited)', 'border-gold-line bg-gold-soft text-gold-ink'] };
+/** The badge in the Source column: the ruleset a file entry comes from, or Homebrew. */
+const originBadge = (s: any) => ORIGIN[s.origin] ?? [findRuleset(s.ruleset)?.short ?? 'Ruleset', ''];
 
 /**
  * One editable list. `group` is the set of lists sharing this tab (shown as
@@ -292,7 +299,7 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
         {def.dmOnly
           ? <>{entries.length} entries. <b>Only the campaign's DMs can see this list</b> - it is never sent to players.</>
           : <>{entries.length} entries, {entries.filter((x) => x.hidden).length} hidden from players. Use <b>Hide</b> to prepare something in secret and <b>Publish</b> when the players find it.</>}
-        {' '}"File" entries live in <code className="rounded bg-muted px-1">{def.file}</code>; you can also add entries there by hand (see the docs folder).
+        {' '}Ruleset entries live in <code className="rounded bg-muted px-1">{def.file}</code>; you can also add entries there by hand (see the docs folder).
       </p>
       {entries.length > 8 && <SearchInput value={q} onChange={setQ} placeholder="Search this list" label="Search this list" />}
       <div className="overflow-x-auto rounded-lg border bg-card">
@@ -310,7 +317,7 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
               <TableRow key={s.id} className={cn(s.hidden && canHide && 'bg-gold-soft/40')}>
                 {def.columns.map(([label, cell]) => <TableCell key={label}>{cell(s)}</TableCell>)}
                 {canHide && <TableCell>{s.hidden ? <Badge variant="outline" className="border-gold-line bg-gold-soft text-gold-ink">Hidden</Badge> : <Badge variant="outline" className="bg-ok/15 text-ok">Public</Badge>}</TableCell>}
-                <TableCell><Badge variant="outline" className={ORIGIN[s.origin][1]}>{ORIGIN[s.origin][0]}</Badge></TableCell>
+                <TableCell><Badge variant="outline" className={originBadge(s)[1]}>{originBadge(s)[0]}</Badge></TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1.5">
                     {def.view && <Button size="sm" onClick={() => setViewing(s)}><BookOpen />View</Button>}
@@ -339,7 +346,8 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
 /** The add / edit dialog, built from the list's `fields`. `entry` is null for a new one. */
 function EntryForm({ listName, entry, onClose }: { listName: string; entry: any | null; onClose: () => void }) {
   const def = CATALOG[listName];
-  const fields = def.fields();
+  const arcane = useScope().uses(ARCANE);
+  const fields = def.fields().filter((f) => arcane || !f.arcane);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const current = (f: FormField) => (entry && f.get ? f.get(entry) : entry?.[f.key]) ?? f.value ?? (f.type === 'checks' || f.type === 'list' ? [] : '');

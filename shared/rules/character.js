@@ -38,7 +38,9 @@ export function blankCharacter() {
     weapons: [],
     // Items carried. Each: { id, itemId, name, category, qty, equipped, attunement, attuned, acBonus, saveBonus, notes }
     inventory: [],
-    arcane: { manaCurrent: 0, invocationAbility: 'int', maxPotency: 1 },
+    arcane: { manaCurrent: 0, invocationAbility: 'int', maxPotency: 1 }, // invocationAbility = the spellcasting ability in plain 5e too
+    // Plain 5e (campaigns without Arcane Compositry): spell slots spent, for spell levels 1-9.
+    spellcasting: { slotsUsed: [0, 0, 0, 0, 0, 0, 0, 0, 0] },
     catalyst: { name: '', bond: '', capacity: '', throughput: '', stored: '' },
     tendril: { rootNode: '', color: '', terminals: '', routing: '' },
     language: { physicals: [], aspectuals: [], forms: [], otherPhysicals: '', otherAspectuals: '', otherForms: '', compositeNotes: '' },
@@ -142,6 +144,10 @@ export function derive(c) {
   auto.saveDC = F.arcaneSaveDC(pb, im);
   auto.manaMax = F.maxMana(level, c.casterType);
 
+  // Plain 5e spellcasting (when Arcane Compositry is not in play): same ability, slots instead of Mana.
+  auto.spellAttack = F.spellAttackBonus(pb, im);
+  F.spellSlots(level, c.casterType).forEach((n, i) => { auto[`slot${i + 1}`] = n; });
+
   // Momentum Dice (codex p.27): the Invocation Modifier can power an Arcane attack.
   const momentumMod = c.momentum.ability === 'invocation' ? im : mods[c.momentum.ability] ?? 0;
   auto.stasisDC = F.stasisSaveDC(pb, momentumMod);
@@ -157,6 +163,7 @@ export function derive(c) {
     attunedCount: (c.inventory || []).filter((i) => i.attunement && i.attuned).length,
   };
   for (const key of Object.keys(auto)) out[key] = pick(o[key], auto[key]);
+  out.slotMax = Array.from({ length: 9 }, (_, i) => out[`slot${i + 1}`]); // spell slots of level 1-9
   return out;
 }
 
