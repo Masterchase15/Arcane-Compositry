@@ -9,6 +9,10 @@
  * "Homebrew (edited)"; "Undo edits" brings the ruleset's version back.
  * Fields marked `arcane: true` only show when the campaign uses Arcane Compositry.
  *
+ * "Copy from template" starts a new entry from any entry already in the list
+ * (e.g. an SRD spell or subclass), so a DM only changes what differs - handy
+ * for adding options from an expansion their table owns.
+ *
  * Every spell, Component, item and class is either PUBLIC (players see it) or
  * HIDDEN (only the campaign's DMs see it). The Hide / Publish button flips it,
  * for file entries too - so you can prepare things ahead and reveal them later.
@@ -20,7 +24,7 @@
  *               checks (several tick boxes), list (comma separated), lines.
  */
 import { useState, type ReactNode } from 'react';
-import { BookOpen, Check, Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, Check, Copy, Eye, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SCHOOLS, CLASS_NAMES, ANY_CLASS, FORMS, ROMAN, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '@shared/rules/constants.js';
 import { codifiedSpellMana } from '@shared/rules/formulas.js';
@@ -31,7 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useConfirm } from '@/components/confirm';
-import { DetailDialog, NpcDetail, SubclassDetail } from '@/components/details';
+import { DetailDialog, NpcDetail, Picker, SubclassDetail } from '@/components/details';
 import { Field, NativeSelect, Options } from '@/components/fields';
 import { SearchInput, matchesWords } from '@/components/list';
 import { ErrorState, Loading } from '@/components/page';
@@ -258,6 +262,8 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
   const confirm = useConfirm();
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<any | null | undefined>(undefined); // undefined = closed, null = new
+  const [picking, setPicking] = useState(false);
+  const [template, setTemplate] = useState<any>(null); // a new entry starts as a copy of this one
   const [viewing, setViewing] = useState<any>(null);
   const canHide = !def.dmOnly; // a DM-only list has nothing to hide: players never get it
   if (error) return <ErrorState message={error} onRetry={reload} />;
@@ -296,7 +302,10 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
             ))}
           </div>
         ) : <span />}
-        <Button onClick={() => setEditing(null)}><Plus />New {def.noun}</Button>
+        <div className="flex flex-wrap gap-2">
+          {entries.length > 0 && <Button variant="outline" onClick={() => setPicking(true)}><Copy />Copy from template</Button>}
+          <Button onClick={() => { setTemplate(null); setEditing(null); }}><Plus />New {def.noun}</Button>
+        </div>
       </div>
       <p className="text-sm text-muted-foreground">
         {def.dmOnly
@@ -341,14 +350,23 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
           {def.view(viewing)}
         </DetailDialog>
       )}
-      {editing !== undefined && <EntryForm listName={listName} entry={editing} onClose={() => setEditing(undefined)} />}
+      <Picker open={picking} onOpenChange={setPicking} title={`Copy from template: ${def.noun}`} emptyText="Nothing to copy yet."
+        intro={`Pick an entry to start from. You get a new ${def.noun} with all its fields filled in - change what differs, choose its ruleset, and save. The original is not changed.`}
+        entries={entries} describe={cellText} onPick={(e) => { setTemplate(e); setEditing(null); }} />
+      {editing !== undefined && <EntryForm listName={listName} entry={editing} template={editing ? null : template}
+        onClose={() => { setEditing(undefined); setTemplate(null); }} />}
     </div>
   );
 }
 
-/** The add / edit dialog, built from the list's `fields`. `entry` is null for a new one. */
-function EntryForm({ listName, entry, onClose }: { listName: string; entry: any | null; onClose: () => void }) {
+/**
+ * The add / edit dialog, built from the list's `fields`. `entry` is null for a new one;
+ * `template` (new ones only) fills the form from an existing entry.
+ */
+function EntryForm({ listName, entry, template, onClose }: { listName: string; entry: any | null; template?: any; onClose: () => void }) {
   const def = CATALOG[listName];
+  // What the boxes start with: the entry being edited, or a copy of the template (hidden until published).
+  const source = entry ?? (template ? { ...template, name: `${template.name} (copy)`, hidden: true } : null);
   const { uses, rulesets } = useScope();
   const arcane = uses(ARCANE);
   const fields = def.fields().filter((f) => arcane || !f.arcane);
@@ -356,14 +374,14 @@ function EntryForm({ listName, entry, onClose }: { listName: string; entry: any 
   // campaign uses more than one. Compositry spells and Components are always Arcane Compositry.
   if (rulesets.length > 1 && !ARCANE_ONLY.includes(listName)) {
     fields.splice(1, 0, {
-      key: 'ruleset', label: 'Ruleset', type: 'select', value: entry?.ruleset ?? BASE_RULESET,
+      key: 'ruleset', label: 'Ruleset', type: 'select', value: rulesets.includes(source?.ruleset) ? source.ruleset : BASE_RULESET,
       options: rulesets.map((id) => ({ value: id, label: findRuleset(id)?.name ?? id })),
       hint: 'The book or expansion it comes from. It is hidden while that ruleset is switched off.',
     });
   }
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const current = (f: FormField) => (entry && f.get ? f.get(entry) : entry?.[f.key]) ?? f.value ?? (f.type === 'checks' || f.type === 'list' ? [] : '');
+  const current = (f: FormField) => (source && f.get ? f.get(source) : source?.[f.key]) ?? f.value ?? (f.type === 'checks' || f.type === 'list' ? [] : '');
   const star = (f: FormField) => (f.required ? ' *' : '');
 
   const save = async (form: HTMLFormElement) => {
@@ -405,7 +423,7 @@ function EntryForm({ listName, entry, onClose }: { listName: string; entry: any 
       );
     }
     if (f.type === 'textarea' || f.type === 'lines') {
-      const text = f.type === 'lines' ? f.toText!(entry?.[f.key]) : value;
+      const text = f.type === 'lines' ? f.toText!(source?.[f.key]) : value;
       return (
         <Field key={f.key} label={`${f.label}${star(f)}`} htmlFor={id} hint={f.hint} className="sm:col-span-2">
           <Textarea id={id} name={f.key} defaultValue={text} className={cn('min-h-24', (f.tall || (f.type === 'lines' && !f.short)) && 'min-h-48')} />
@@ -435,8 +453,10 @@ function EntryForm({ listName, entry, onClose }: { listName: string; entry: any 
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">{entry ? `Edit ${entry.name}` : `New ${def.noun}`}</DialogTitle>
-          <DialogDescription>Fields marked * are required.</DialogDescription>
+          <DialogTitle className="font-serif text-2xl">{entry ? `Edit ${entry.name}` : template ? `New ${def.noun} from ${template.name}` : `New ${def.noun}`}</DialogTitle>
+          <DialogDescription>
+            {template && 'A copy - rename it and change what differs. '}Fields marked * are required.
+          </DialogDescription>
         </DialogHeader>
         <form id="entry-form" noValidate onSubmit={(e) => { e.preventDefault(); void save(e.currentTarget); }}>
           {error && <p className="mb-3 rounded-md bg-destructive/10 px-3 py-2 font-semibold text-destructive" role="alert">{error}</p>}
