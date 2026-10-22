@@ -1,123 +1,174 @@
 /**
- * pages/codex.tsx - the rules reference (/codex and /codex/<chapter-id>).
- * The text itself lives in shared/rules/codex-content.js.
+ * pages/codex.tsx - the Codex library and the way into each book.
+ *
+ *   /codex                          the library: every book, search, your bookmarks
+ *   /codex/<book>                   a book's first page
+ *   /codex/<book>/<page>?at=<id>    reading a book (components/codex/reader.tsx), at a heading
+ *
+ * The list of books is data/books/index.js; books, bookmarks and reading
+ * progress are loaded through lib/books.ts. Old addresses of the Arcane
+ * Compositry codex (/codex/<chapter>) still work.
  */
-import { Link, useNavigate, useParams } from 'react-router';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { CHAPTERS, SECTIONS, findChapter } from '@shared/rules/codex-content.js';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, useParams } from 'react-router';
+import { Bookmark as BookmarkIcon, BookOpen, ChevronRight, LibraryBig, Search } from 'lucide-react';
+import { CHAPTERS } from '@shared/rules/codex-content.js';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { NativeSelect } from '@/components/fields';
-import { RichHtml } from '@/components/rich-html';
-import { cn } from '@/lib/utils';
-
-interface Chapter { id: string; section: string; kicker: string; title: string; page: number; num?: string; html: string }
-const chapters = CHAPTERS as Chapter[];
-
-/** "Quick Start: Build a Spell in 6 Steps" -> "Quick Start" for menus. */
-const shortTitle = (c: Chapter) => c.title.split(':')[0];
+import { SearchInput } from '@/components/list';
+import { Empty, ErrorState, Loading, PageHead } from '@/components/page';
+import { BookBadge, ResultList, toneOf } from '@/components/codex/bits';
+import { Reader } from '@/components/codex/reader';
+import { BUILT_IN, bookHref, loadBookmarks, loadLibrary, searchLibrary, searchTerms, type BookMeta, type Bookmark, type LibraryHit } from '@/lib/books';
+import { errorMessage } from '@/lib/api';
+import { useSession } from '@/lib/session';
 
 export default function Codex() {
-  const { chapter: chapterId } = useParams();
-  const navigate = useNavigate();
-  const chapter = findChapter(chapterId) as Chapter | null;
-  const index = chapter ? chapters.indexOf(chapter) : -1;
-  const prev = chapter ? chapters[index - 1] : undefined;
-  const next = chapter ? chapters[index + 1] : chapters[0];
-
-  return (
-    <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <Card className="sticky top-24 hidden max-h-[calc(100dvh-8rem)] gap-0 overflow-y-auto p-2 lg:block">
-        <nav aria-label="Codex chapters" className="text-sm">
-          <TocLink to="/codex" current={!chapter}>Overview</TocLink>
-          {SECTIONS.map((s: any) => (
-            <div key={s.id}>
-              <h4 className="mx-2.5 mt-4 mb-1 font-sans text-xs font-bold uppercase tracking-widest text-gold-ink">{s.title}</h4>
-              {chapters.filter((c) => c.section === s.id).map((c) => (
-                <TocLink key={c.id} to={`/codex/${c.id}`} current={c === chapter} page={c.page}>{shortTitle(c)}</TocLink>
-              ))}
-            </div>
-          ))}
-        </nav>
-      </Card>
-
-      <div className="min-w-0">
-        <label className="mb-4 grid gap-1.5 lg:hidden">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Jump to chapter</span>
-          <NativeSelect value={chapter?.id ?? ''} onChange={(e) => navigate(e.target.value ? `/codex/${e.target.value}` : '/codex')}>
-            <option value="">Codex overview</option>
-            {SECTIONS.map((s: any) => (
-              <optgroup key={s.id} label={s.title}>
-                {chapters.filter((c) => c.section === s.id).map((c) => <option key={c.id} value={c.id}>{shortTitle(c)}</option>)}
-              </optgroup>
-            ))}
-          </NativeSelect>
-        </label>
-
-        <article className="relative">
-          {chapter ? <ChapterView c={chapter} /> : <Cover />}
-        </article>
-
-        <div className="mt-10 flex flex-wrap justify-between gap-3">
-          {prev ? <Button asChild variant="outline"><Link to={`/codex/${prev.id}`}><ArrowLeft />{shortTitle(prev)}</Link></Button>
-            : chapter ? <Button asChild variant="outline"><Link to="/codex"><ArrowLeft />Overview</Link></Button> : <span />}
-          {next && <Button asChild><Link to={`/codex/${next.id}`}>{shortTitle(next)}<ArrowRight /></Link></Button>}
-        </div>
-      </div>
-    </div>
-  );
+  const { book, page } = useParams();
+  if (!book) return <Library />;
+  // An old link straight to an Arcane Compositry chapter: /codex/quick-start
+  if (!page && (CHAPTERS as { id: string }[]).some((c) => c.id === book)) return <Navigate replace to={bookHref(BUILT_IN, book)} />;
+  return <Reader bookId={book} pageId={page} />;
 }
 
-function TocLink({ to, current, page, children }: { to: string; current: boolean; page?: number; children: React.ReactNode }) {
-  return (
-    <Link to={to} aria-current={current ? 'page' : undefined}
-      className={cn('flex justify-between gap-2 rounded-md px-2.5 py-1.5 hover:bg-accent', current && 'bg-accent font-semibold text-accent-foreground')}>
-      <span>{children}</span>{page != null && <span className="text-muted-foreground tabular-nums">{page}</span>}
-    </Link>
-  );
-}
+// ── The library ──────────────────────────────────────────────────────────────
+function Library() {
+  const { user, loaded } = useSession();
+  const [books, setBooks] = useState<BookMeta[] | null>(null);
+  const [marks, setMarks] = useState<Bookmark[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-function ChapterView({ c }: { c: Chapter }) {
+  const load = () => {
+    setError(null);
+    loadLibrary(!!user).then(setBooks).catch((err) => setError(errorMessage(err)));
+    if (user) loadBookmarks().then(setMarks).catch(() => setMarks([]));
+    else setMarks([]);
+  };
+  useEffect(() => { if (loaded) load(); }, [loaded, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const ids = useMemo(() => (books ?? []).map((b) => b.id), [books]);
+  const byId = useMemo(() => new Map((books ?? []).map((b) => [b.id, b])), [books]);
+
   return (
     <>
-      {c.num && <span className="pointer-events-none absolute -top-4 right-0 select-none font-serif text-8xl font-bold text-gold/15" aria-hidden>{c.num}</span>}
-      <p className="kicker mb-1">{c.kicker}</p>
-      <h1 className="text-3xl font-bold sm:text-4xl">{c.title}</h1>
-      <hr className="rule-gold mt-3 mb-6 max-w-md" />
-      <RichHtml key={c.id} html={c.html} />
+      <PageHead kicker="Codex" title="The Library">
+        Every rulebook in one place. Open a book to read it chapter by chapter, search it, and bookmark the pages you keep coming back to.
+      </PageHead>
+
+      <LibrarySearch ids={ids} titleOf={(id) => byId.get(id)?.title ?? id} />
+
+      {error ? <ErrorState message={error} onRetry={load} /> : !books ? <Loading label="Opening the library..." /> : <>
+        <section className="mt-10">
+          <h2 className="mb-4 flex items-center gap-2.5 text-2xl font-bold"><LibraryBig className="size-6 text-gold-ink" />Books</h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {books.map((b) => <BookCard key={b.id} book={b} tone={toneOf(ids, b.id)} />)}
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="mb-4 flex items-center gap-2.5 text-2xl font-bold"><BookmarkIcon className="size-6 text-gold-ink" />Your bookmarks</h2>
+          {!user ? (
+            <Empty icon={<BookmarkIcon />} title="Sign in to bookmark pages"
+              action={<Button asChild><Link to="/account?next=/codex">Sign in</Link></Button>}>
+              Your bookmarks are saved to your account, so they are there on any device.
+            </Empty>
+          ) : marks.length ? (
+            <>
+              <div className="grid gap-2.5 md:grid-cols-2">
+                {marks.slice(0, 12).map((m) => (
+                  <Link key={m.id} to={bookHref(m.book, m.page, { at: m.anchor })} className="surface flex items-start gap-3 p-3 transition-colors hover:border-primary">
+                    <BookBadge small abbr={byId.get(m.book)?.abbr ?? '?'} tone={toneOf(ids, m.book)} className="mt-0.5" />
+                    <span className="grid min-w-0 gap-0.5">
+                      <b className="font-serif">{m.title}</b>
+                      <span className="text-sm text-muted-foreground">{m.context || byId.get(m.book)?.title}</span>
+                      {m.note && <span className="mt-1 border-l-2 border-gold-line pl-2 text-sm whitespace-pre-wrap text-muted-foreground italic">{m.note}</span>}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              {marks.length > 12 && <p className="mt-3 text-sm text-muted-foreground">Showing your 12 newest of {marks.length}. Open a book to see all of its bookmarks.</p>}
+            </>
+          ) : (
+            <Empty icon={<BookmarkIcon />} title="No bookmarks yet">Open a book and press the bookmark button on any page or heading.</Empty>
+          )}
+        </section>
+      </>}
     </>
   );
 }
 
-function Cover() {
+function BookCard({ book: b, tone }: { book: BookMeta; tone: number }) {
+  const stats = [b.pages ? `${b.pages} pages` : '', b.chapters ? `${b.chapters} chapters` : ''].filter(Boolean).join(' · ');
   return (
-    <div className="prose-ac">
-      <p className="kicker">Playtest Reference Manual</p>
-      <h1 className="text-4xl font-bold">Arcane Compositry</h1>
-      <p className="lead">Player's Field Codex</p>
-      <hr className="rule-gold max-w-md" />
-      <p className="lead">A fast-reference guide to improvised magic, Tendril circuitry, Catalysts, Applied Thaumaturgy, Counter-Compositry, and the combat systems that make magic an active exchange.</p>
-      <div className="callout"><b>Core idea:</b> Choose what the magic is made of, choose what it does, choose how it manifests, choose how hard you push it - then pay the Mana.</div>
-      <div className="dark-box">
-        <p className="kicker">Designed for table use - rules first, lore second, quick reference last</p>
-        <p>Use Section I while building or resolving a Composition. Use Section II when Tendrils, counters, discoveries, or combat interaction matter.</p>
+    <Card className="grid grid-cols-[96px_minmax(0,1fr)] gap-4 p-4 sm:grid-cols-[112px_minmax(0,1fr)]">
+      <Link to={bookHref(b.id)} data-tone={tone} aria-label={`Open ${b.title}`}
+        className="book-cover relative flex aspect-[3/4] flex-col justify-between rounded-[3px_8px_8px_3px] py-3 pr-2.5 pl-4 text-[#f4f1e4] shadow-md transition-transform hover:-translate-y-1 hover:-rotate-1">
+        <span className="font-serif text-2xl font-bold tracking-wide text-[#ecd98f]">{b.abbr}</span>
+        <span className="hidden font-serif text-xs leading-snug font-semibold sm:block">{b.title}</span>
+      </Link>
+      <div className="min-w-0">
+        <p className="kicker">{[b.kind, b.year].filter(Boolean).join(' · ')}</p>
+        <h3 className="mt-1 text-lg leading-snug font-bold"><Link to={bookHref(b.id)} className="hover:text-primary">{b.title}</Link></h3>
+        <p className="mt-1.5 text-sm text-muted-foreground">{b.description}</p>
+        <p className="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+          {stats}
+          {!!b.bookmarks && <span className="inline-flex items-center gap-1">· <BookmarkIcon className="size-3.5 fill-current text-gold-ink" />{b.bookmarks}</span>}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button asChild size="sm"><Link to={bookHref(b.id)}><BookOpen />Open</Link></Button>
+          {b.progress && (
+            <Button asChild size="sm" variant="outline" title={b.progress.title}>
+              <Link to={bookHref(b.id, b.progress.page, { at: b.progress.anchor })}>Continue</Link>
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="note-box">
-        <h4>At the table</h4>
-        <p><b>Players:</b> Section I (Quick Start through Circuit Stability) covers Arcane construction; Attack Chains through Launch &amp; Smash explain Attack Chains, active defense, and Momentum Dice. The last two chapters are table references.</p>
-      </div>
-      {SECTIONS.map((s: any) => (
-        <section key={s.id}>
-          <h2>{s.title}</h2>
-          <div className="grid cols-auto">
-            {chapters.filter((c) => c.section === s.id).map((c) => (
-              <Link key={c.id} className="card" to={`/codex/${c.id}`}>
-                <p className="kicker">{c.kicker}</p><h3>{c.title}</h3><span className="small muted">Codex page {c.page}</span>
-              </Link>
+    </Card>
+  );
+}
+
+/** Search every book at once. */
+function LibrarySearch({ ids, titleOf }: { ids: string[]; titleOf: (id: string) => string }) {
+  const [q, setQ] = useState('');
+  const [hits, setHits] = useState<LibraryHit[] | null>(null);
+  const [state, setState] = useState<'idle' | 'busy' | 'error'>('idle');
+
+  useEffect(() => {
+    const words = q.trim();
+    if (words.length < 2) { setHits(null); setState('idle'); return; }
+    let live = true;
+    setState('busy');
+    const timer = setTimeout(() => {
+      searchLibrary(words, titleOf)
+        .then((found) => { if (live) { setHits(found); setState('idle'); } })
+        .catch(() => { if (live) setState('error'); });
+    }, 250);
+    return () => { live = false; clearTimeout(timer); };
+  }, [q]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const terms = searchTerms(q);
+  return (
+    <div role="search">
+      <SearchInput value={q} onChange={setQ} placeholder="Search every book - a spell, a monster, a rule..." label="Search every book" />
+      <div aria-live="polite" className="mt-3">
+        {state === 'busy' && !hits && <p className="text-sm text-muted-foreground">Searching...</p>}
+        {state === 'error' && <p className="text-sm font-semibold text-destructive">The search did not work. Try again.</p>}
+        {hits && (hits.length ? (
+          <div className="grid gap-3">
+            {hits.map((g) => (
+              <section key={g.id} className="surface p-3 sm:p-4">
+                <header className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2.5 text-lg font-bold"><BookBadge small abbr={g.abbr} tone={toneOf(ids, g.id)} />{g.title}</h3>
+                  <Button asChild size="sm" variant="ghost">
+                    <Link to={bookHref(g.id, null, { search: q.trim() })}>All {g.total} result{g.total === 1 ? '' : 's'}<ChevronRight /></Link>
+                  </Button>
+                </header>
+                <ResultList bookId={g.id} results={g.results} q={q.trim()} terms={terms} />
+              </section>
             ))}
           </div>
-        </section>
-      ))}
+        ) : <Empty icon={<Search />} title="Nothing found">No book mentions "{q.trim()}".</Empty>)}
+      </div>
     </div>
   );
 }

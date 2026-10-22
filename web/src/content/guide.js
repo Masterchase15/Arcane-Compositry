@@ -16,7 +16,7 @@ export const guideSteps = () => [
     title: 'Imagine the character',
     html: `<p>Before any numbers: who are they? A river-warden who shapes Water and Ice? A soldier whose sword draw completes an Iron + Lightning circuit? Decide two things:</p>
       <ul><li><b>What do they do in a fight?</b> Project magic outward (a Compositor), or route it through body and gear (an Applied Thaumaturge)?</li>
-      <li><b>What is their magic made of?</b> Pick one or two Components that feel like them. See <a href="#/codex/spell-grammar">Spell Grammar</a>.</li></ul>`,
+      <li><b>What is their magic made of?</b> Pick one or two Components that feel like them. See <a href="/codex/arcane-compositry/spell-grammar">Spell Grammar</a>.</li></ul>`,
   },
   {
     title: 'Choose a class',
@@ -61,14 +61,14 @@ export const guideSteps = () => [
       <ul><li><b>Invocation Modifier (IM):</b> the modifier of your Invocation ability.</li>
       <li><b>Arcane attack:</b> d20 + PB + IM. <b>Save DC:</b> 8 + PB + IM.</li>
       <li><b>Max Potency:</b> the highest Potency (I-IX) you can safely invoke. Ask your DM; the site suggests half your level, rounded up.</li></ul>
-      <p>See <a href="#/codex/potency-mana">Potency &amp; the Mana Formula</a> and <a href="#/codex/spell-mana-pools">Maximum Mana</a>.</p>`,
+      <p>See <a href="/codex/arcane-compositry/potency-mana">Potency &amp; the Mana Formula</a> and <a href="/codex/arcane-compositry/spell-mana-pools">Maximum Mana</a>.</p>`,
   },
   {
     title: 'Bond a Catalyst and describe your Tendril',
     html: `<p>Your <b>Catalyst</b> is the magic-bearing metal, gem or crystal that powers you. Your DM tells you its numbers:</p>
       <ul><li><b>Capacity:</b> how much Mana it can store.</li><li><b>Throughput:</b> how much Mana it can safely discharge in one invocation. The Spellcrafter warns you when a spell costs more than this.</li></ul>
       <p>Your <b>Tendril</b> is the vine-like scripture on your body. Note where its Root Node sits, what color it glows, where its Terminals are, and the gesture that closes the circuit (your Bridge). This is flavor that other characters can <i>read</i>.</p>
-      <p>See <a href="#/codex/tendril-catalysts">Tendril &amp; Catalysts</a> and <a href="#/codex/invocation">Prime, Route, Bridge, Release</a>.</p>`,
+      <p>See <a href="/codex/arcane-compositry/tendril-catalysts">Tendril &amp; Catalysts</a> and <a href="/codex/arcane-compositry/invocation">Prime, Route, Bridge, Release</a>.</p>`,
   },
   {
     title: 'Record your known Arcane language',
@@ -84,7 +84,7 @@ export const guideSteps = () => [
       <li><b>Guard:</b> 2 + Proficiency Bonus. It refreshes at the start of your turn.</li>
       <li><b>Dodge</b> (DEX, + PB if proficient in DEX saves), <b>Parry</b> (STR or DEX + PB) and <b>Block</b> (PB + STR with a weapon).</li>
       <li><b>Momentum Die:</b> everyone starts at d4. Choose your Momentum Ability (STR, DEX or your Invocation ability) for your Stasis Save DC.</li></ul>
-      <p>Add your weapons, with any Chain trait your DM gives them. See <a href="#/codex/attack-chains">Attack Chains</a> and <a href="#/codex/momentum-dice">Momentum Dice</a>.</p>`,
+      <p>Add your weapons, with any Chain trait your DM gives them. See <a href="/codex/arcane-compositry/attack-chains">Attack Chains</a> and <a href="/codex/arcane-compositry/momentum-dice">Momentum Dice</a>.</p>`,
   },
   {
     title: 'Finish the story',

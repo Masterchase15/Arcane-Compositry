@@ -139,6 +139,31 @@ export const MIGRATIONS = [
      expires_at INTEGER NOT NULL
    );
    CREATE INDEX email_tokens_user ON email_tokens(user_id);`,
+
+  // 7 - Codex library: bookmarks and "continue reading", per account. `book` is an id
+  //     from data/books/index.js, `page` a page of that book, `anchor` a heading on it.
+  `CREATE TABLE bookmarks (
+     id         TEXT PRIMARY KEY,
+     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     book       TEXT NOT NULL,
+     page       TEXT NOT NULL,
+     anchor     TEXT NOT NULL DEFAULT '',   -- '' = the top of the page
+     title      TEXT NOT NULL,
+     context    TEXT NOT NULL DEFAULT '',   -- the chapter it is in, shown under the title
+     note       TEXT NOT NULL DEFAULT '',
+     created_at TEXT NOT NULL,
+     UNIQUE (user_id, book, page, anchor)
+   );
+   CREATE INDEX bookmarks_user ON bookmarks(user_id, book);
+   CREATE TABLE reading_progress (
+     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     book       TEXT NOT NULL,
+     page       TEXT NOT NULL,
+     anchor     TEXT NOT NULL DEFAULT '',
+     title      TEXT NOT NULL DEFAULT '',
+     updated_at TEXT NOT NULL,
+     PRIMARY KEY (user_id, book)
+   );`,
 ];
 
 /** A group's invite code: 8 letters and digits, leaving out ones that look alike (0/O, 1/I/L). */
