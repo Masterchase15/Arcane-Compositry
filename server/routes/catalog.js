@@ -5,15 +5,18 @@
  * Route lines: [METHOD, path, who may call it, handler] - see server/api.js.
  */
 import { LISTS, getList, validateEntry, saveCustom, deleteCustom, setHidden, forgetVisibility } from '../catalog.js';
+import { findRuleset } from '../../shared/rules/rulesets.js';
 import { fail } from '../http.js';
 
 // ── Catalog: spells, items and classes ───────────────────────────────────────
 /**
- * The files plus the current group's DM-page edits. Players get only public
- * entries; the group's DMs also get the hidden ones (each marked hidden: true).
- * Not in a group (or signed out): the files only.
+ * The files plus the current group's DM-page edits, from the group's rulesets
+ * only. Players get only public entries; the group's DMs also get the hidden
+ * ones (each marked hidden: true). Not in a group (or signed out): the files
+ * only, from every ruleset (the browser filters those itself).
  */
-const visibleTo = (group, listName) => getList(listName, { groupId: group?.id ?? null, includeHidden: group?.role === 'dm' });
+const visibleTo = (group, listName) =>
+  getList(listName, { groupId: group?.id ?? null, includeHidden: group?.role === 'dm', rulesets: group?.rulesets ?? null });
 
 async function listSpells({ group }) {
   return { codified: await visibleTo(group, 'codified'), compositry: await visibleTo(group, 'compositry') };
@@ -27,8 +30,14 @@ function checkList(name) {
 /** Create or update a spell, item or class from the DM page. */
 async function saveEntry({ group, params, body }) {
   const listName = checkList(params.list);
-  const { entry, errors } = await validateEntry(listName, { ...body, id: params.id || body.id }, group.id);
+  const id = params.id || body.id;
+  // Editing an existing entry keeps its ruleset unless the form says otherwise.
+  const existing = id ? (await getList(listName, { groupId: group.id })).find((e) => e.id === id) : null;
+  const { entry, errors } = await validateEntry(listName, { ...body, id, ruleset: body.ruleset ?? existing?.ruleset }, group.id);
   if (errors.length) throw fail(400, `Not saved: ${errors.join('; ')}.`);
+  if (!group.rulesets.includes(entry.ruleset)) {
+    throw fail(400, `Not saved: that belongs to ${findRuleset(entry.ruleset)?.name}, which this campaign does not use. Turn it on in the Group tab first.`);
+  }
   saveCustom(group.id, listName, entry);
   setHidden(group.id, listName, entry.id, entry.hidden);
   return { entry };
@@ -59,7 +68,7 @@ export const routes = [
   ['GET',    '/api/components',              'public', async ({ group }) => ({ components: await visibleTo(group, 'components') })],
   ['GET',    '/api/subclasses',              'public', async ({ group }) => ({ subclasses: await visibleTo(group, 'subclasses') })],
   // NPCs & enemies: the group's DMs only. There is no public route for this list.
-  ['GET',    '/api/npcs',                    'dm',     async ({ group }) => ({ npcs: await getList('npcs', { groupId: group.id }) })],
+  ['GET',    '/api/npcs',                    'dm',     async ({ group }) => ({ npcs: await getList('npcs', { groupId: group.id, rulesets: group.rulesets }) })],
   // :list is one of: codified, compositry, components, items, classes, subclasses, npcs
   ['PUT',    '/api/catalog/:list/:id/visibility', 'dm', setVisibility],
   ['POST',   '/api/catalog/:list',           'dm',     saveEntry],

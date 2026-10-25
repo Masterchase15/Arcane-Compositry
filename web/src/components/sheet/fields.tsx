@@ -102,7 +102,7 @@ export function CheckF({ path, label }: { path: string; label: ReactNode }) {
 }
 
 /** Numbers derive() calculates that read better without a + sign. */
-const PLAIN = ['passivePerception', 'guardMax', 'chainLength', 'counterCost', 'manaMax', 'saveDC', 'stasisDC'];
+const PLAIN = ['passivePerception', 'guardMax', 'chainLength', 'counterCost', 'manaMax', 'saveDC', 'stasisDC', ...Array.from({ length: 9 }, (_, i) => `slot${i + 1}`)];
 
 /**
  * An automatic number. Blank = use the rule (shown in green as the placeholder);

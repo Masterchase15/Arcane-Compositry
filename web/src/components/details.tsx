@@ -2,7 +2,8 @@
  * components/details.tsx - the "details" pop-ups and the "pick one" list.
  *
  * Shared so a spell, item or Component looks the same whether it is opened from
- * its index page, a character sheet or the campaign hub.
+ * its index page, a character sheet or the campaign hub. Arcane Compositry
+ * details (Mana, Chain traits, Catalyst numbers) only show where that ruleset is in use.
  *
  *   <SpellDetail list s /> <ItemDetail it /> <ComponentDetail c /> <SubclassDetail sub cls />
  *   <NpcDetail n /> <CharacterSummary sheet d />        the body of a details dialog
@@ -20,6 +21,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Paragraphs } from '@/components/page';
 import { cn } from '@/lib/utils';
+import { useScope } from '@/lib/catalog';
+import { OriginBadge, OriginLine } from '@/components/rulesets-bar';
+import { ARCANE } from '@shared/rules/rulesets.js';
 
 const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 10 > 3 || Math.floor(n / 10) === 1 ? 0 : n % 10]}`;
 const num0 = (v: unknown) => Number(v) || 0;
@@ -50,7 +54,6 @@ export function ChipRow({ label, list, plain }: { label: string; list: string[];
 export const HiddenBadge = ({ entry }: { entry: { hidden?: boolean } }) =>
   entry.hidden ? <Badge className="ml-1.5 border-gold-line bg-gold-soft text-gold-ink" variant="outline">Hidden from players</Badge> : null;
 const Kicker = ({ children }: { children: ReactNode }) => <p className="kicker mb-1 flex flex-wrap items-center">{children}</p>;
-const Source = ({ source }: { source?: string }) => (source ? <p className="mt-3 text-sm italic text-muted-foreground">Source: {source}</p> : null);
 const Callout = ({ children }: { children: ReactNode }) => <div className="my-3 rounded-r-lg border-l-4 border-gold bg-gold-soft px-4 py-3">{children}</div>;
 const NoteBox = ({ title, children }: { title: string; children: ReactNode }) => (
   <div className="my-3 rounded-lg border border-gold-line bg-gold-soft/60 px-4 py-3.5">
@@ -83,18 +86,19 @@ export function DetailDialog({ open, onOpenChange, title, footer, wide, children
 // ── Spells, items, Components ────────────────────────────────────────────────
 export function SpellDetail({ list, s }: { list: string; s: any }) {
   const isCodified = list === 'codified';
+  const arcane = useScope().uses(ARCANE);
   const mana = isCodified ? codifiedSpellMana(s.level) : s.mana;
   return (
     <>
       <Kicker>
         {isCodified ? (s.level === 0 ? `${s.school} cantrip` : `${ordinal(s.level)}-level ${s.school}`) : `Potency ${ROMAN[s.potency]} ${s.school} Composition`}
-        {s.ritual ? ' · Ritual' : ''}<HiddenBadge entry={s} />
+        {s.ritual ? ' · Ritual' : ''}<OriginBadge entry={s} /><HiddenBadge entry={s} />
       </Kicker>
       <StatGrid>
         {isCodified ? <>
           <Stat label="Casting time" value={s.castingTime} /><Stat label="Range" value={s.range} /><Stat label="Components" value={s.components} />
           <Stat label="Duration" value={`${s.duration}${s.concentration && !/concentration/i.test(s.duration) ? ' (Concentration)' : ''}`} />
-          <Stat label="Mana" value={`${mana} (replaces a ${s.level === 0 ? 'cantrip' : `level ${s.level} slot`})`} />
+          {arcane && <Stat label="Mana" value={`${mana} (replaces a ${s.level === 0 ? 'cantrip' : `level ${s.level} slot`})`} />}
         </> : <>
           <Stat label="Components" value={[...s.physicals, ...s.aspectuals].join(' + ')} /><Stat label="Form" value={s.form} /><Stat label="Mana" value={String(mana)} />
           <Stat label="Range" value={s.range} /><Stat label="Area" value={s.area} /><Stat label="Duration" value={s.duration} />
@@ -103,29 +107,30 @@ export function SpellDetail({ list, s }: { list: string; s: any }) {
         </>}
       </StatGrid>
       <Paragraphs text={s.description} />
-      {s.higherLevels && <p className="mt-3"><b>Using more Mana.</b> {s.higherLevels}</p>}
+      {s.higherLevels && <p className="mt-3"><b>{arcane ? 'Using more Mana.' : 'Using a higher-level spell slot.'}</b> {s.higherLevels}</p>}
       <ChipRow label="Classes" list={s.classes.map((c: string) => (c === ANY_CLASS ? 'Any class' : c))} />
       <ChipRow label="Tags" list={s.tags} plain />
-      <Source source={s.source} />
+      <OriginLine entry={s} />
     </>
   );
 }
 
 export function ItemDetail({ it }: { it: any }) {
+  const arcane = useScope().uses(ARCANE);
   const bonus = [it.acBonus && `${it.acBonus > 0 ? '+' : ''}${it.acBonus} Armor Class`, it.saveBonus && `${it.saveBonus > 0 ? '+' : ''}${it.saveBonus} saving throws`].filter(Boolean).join(', ');
   return (
     <>
-      <Kicker>{[it.category, it.rarity].join(' · ')}{it.attunement ? ' · Requires attunement' : ''}<HiddenBadge entry={it} /></Kicker>
+      <Kicker>{[it.category, it.rarity].join(' · ')}{it.attunement ? ' · Requires attunement' : ''}<OriginBadge entry={it} /><HiddenBadge entry={it} /></Kicker>
       <StatGrid>
         <Stat label="Damage" value={it.damage} /><Stat label="Properties" value={it.properties.join(', ')} /><Stat label="Mastery" value={it.mastery} />
         <Stat label="Armor Class" value={it.armorClass} /><Stat label="While in use" value={bonus} />
-        <Stat label="Capacity" value={it.capacity && `${it.capacity} Mana`} /><Stat label="Throughput" value={it.throughput && `${it.throughput} Mana per invocation`} />
+        {arcane && <><Stat label="Capacity" value={it.capacity && `${it.capacity} Mana`} /><Stat label="Throughput" value={it.throughput && `${it.throughput} Mana per invocation`} /></>}
         <Stat label="Cost" value={it.cost} /><Stat label="Weight" value={it.weight} />
       </StatGrid>
-      {it.chainTrait && <Callout><b className="text-gold-ink">Attack Chain trait:</b> {it.chainTrait}</Callout>}
+      {arcane && it.chainTrait && <Callout><b className="text-gold-ink">Attack Chain trait:</b> {it.chainTrait}</Callout>}
       <Paragraphs text={it.description} />
       <ChipRow label="Tags" list={it.tags} plain />
-      <Source source={it.source} />
+      <OriginLine entry={it} />
     </>
   );
 }
@@ -133,22 +138,23 @@ export function ItemDetail({ it }: { it: any }) {
 export function ComponentDetail({ c }: { c: any }) {
   return (
     <>
-      <Kicker>{c.kind} Component - {c.kind === 'Physical' ? 'what exists?' : 'what property is applied?'}<HiddenBadge entry={c} /></Kicker>
+      <Kicker>{c.kind} Component - {c.kind === 'Physical' ? 'what exists?' : 'what property is applied?'}<OriginBadge entry={c} /><HiddenBadge entry={c} /></Kicker>
       {c.tendrilColor && <StatGrid><Stat label="Tendril glow" value={c.tendrilColor} /></StatGrid>}
       <Paragraphs text={c.description} />
       {c.interactions && <NoteBox title="Composites & counters"><Paragraphs text={c.interactions} /></NoteBox>}
       <ChipRow label="Tags" list={c.tags} plain />
-      <Source source={c.source} />
+      <OriginLine entry={c} />
     </>
   );
 }
 
 /** A subclass: what it is, and what it adds to its parent class level by level. */
 export function SubclassDetail({ sub, cls }: { sub: any; cls?: any }) {
+  const arcane = useScope().uses(ARCANE);
   const levels: number[] = [...new Set<number>(sub.features.map((f: any) => f.level))];
   return (
     <>
-      <Kicker>{sub.className} subclass{sub.quick || sub.origin === 'file' ? '' : ' · Custom'}<HiddenBadge entry={sub} /></Kicker>
+      <Kicker>{sub.className} subclass<OriginBadge entry={sub} /><HiddenBadge entry={sub} /></Kicker>
       <Paragraphs text={sub.description} />
       {sub.features.length ? <>
         <h3 className="mt-5 text-xl font-semibold">What it adds to the {sub.className}</h3>
@@ -157,15 +163,15 @@ export function SubclassDetail({ sub, cls }: { sub: any; cls?: any }) {
         </p>
         <FeatureTable features={sub.features} />
       </> : <p className="mt-3 text-muted-foreground">No features have been written for this subclass yet.</p>}
-      {sub.compositry && <DarkBox title="In Arcane Compositry"><Paragraphs text={sub.compositry} /></DarkBox>}
+      {arcane && sub.compositry && <DarkBox title="In Arcane Compositry"><Paragraphs text={sub.compositry} /></DarkBox>}
       {cls && (
         <StatGrid>
           <Stat label="Parent class" value={cls.name} /><Stat label="Hit Die" value={`d${cls.hitDie}`} />
-          <Stat label="Invocation ability" value={ABILITIES.find((a: any) => a.key === cls.invocation)?.name} />
+          {arcane && <Stat label="Invocation ability" value={ABILITIES.find((a: any) => a.key === cls.invocation)?.name} />}
         </StatGrid>
       )}
       <ChipRow label="Tags" list={sub.tags || []} plain />
-      <Source source={sub.source} />
+      {!sub.quick && <OriginLine entry={sub} />}
     </>
   );
 }
@@ -212,6 +218,7 @@ function Scores({ cells }: { cells: { short: string; score: ReactNode; sub: Reac
 
 /** An NPC or enemy as a 2024-style stat block, with its Arcane Compositry numbers. DM only. */
 export function NpcDetail({ n, onClose }: { n: any; onClose?: () => void }) {
+  const usesArcane = useScope().uses(ARCANE);
   const block = (title: string, entries: any[]) => (entries.length ? <>
     <SbHead>{title}</SbHead>
     {entries.map((e, i) => <p key={i} className="mb-1.5"><b><i>{e.name}.</i></b> {e.text}</p>)}
@@ -245,14 +252,14 @@ export function NpcDetail({ n, onClose }: { n: any; onClose?: () => void }) {
         {block('Traits', n.traits)}{block('Actions', n.actions)}{block('Bonus Actions', n.bonusActions)}{block('Reactions', n.reactions)}{block('Legendary Actions', n.legendary)}
       </StatBlock>
 
-      <NoteBox title="Attack Chains & active defense">
+      {usesArcane && <NoteBox title="Attack Chains & active defense">
         <StatGrid>
           <Stat label="Guard" value={`${guard}${n.guard ? '' : ' (2 + PB)'}`} /><Stat label="Max Chain Length" value={n.chainLength} /><Stat label="Proficiency Bonus" value={signed(n.pb)} />
         </StatGrid>
         {n.momentum && <p className="text-sm"><b>Momentum Die:</b> {n.momentum}</p>}
-      </NoteBox>
+      </NoteBox>}
 
-      {profile ? (
+      {usesArcane && profile ? (
         <DarkBox title="Arcane Profile">
           <p>{arcane.map((x, i) => <span key={i}>{i > 0 && ' · '}{x}</span>)}</p>
           {n.physicals.length > 0 && <p><b>Known Physicals:</b> {n.physicals.join(', ')}</p>}
@@ -274,6 +281,7 @@ export function NpcDetail({ n, onClose }: { n: any; onClose?: () => void }) {
 
 /** A player character at a glance, built from their sheet (after upgrade()) and derive(sheet). */
 export function CharacterSummary({ sheet, d, id, ownerName, onClose }: { sheet: any; d: any; id?: string; ownerName?: string; onClose?: () => void }) {
+  const usesArcane = useScope().uses(ARCANE);
   const who = [`Level ${d.level}`, sheet.identity.species, sheet.identity.className, sheet.identity.subclass && `(${sheet.identity.subclass})`].filter(Boolean).join(' ');
   const trained = (Object.values(SKILLS).flat() as string[]).filter((sk) => Number(sheet.skills[sk]) > 0)
     .map((sk) => `${sk} ${signed(d[`skill_${sk.replace(/\s+/g, '')}`])}${Number(sheet.skills[sk]) > 1 ? ' (E)' : ''}`);
@@ -295,7 +303,7 @@ export function CharacterSummary({ sheet, d, id, ownerName, onClose }: { sheet: 
         <SbLine label="Skills" value={trained.join(', ')} />
         <SbLine label="Items in use" value={inUse.join(', ')} />
       </StatBlock>
-      <NoteBox title="Attack Chains & active defense">
+      {usesArcane ? <><NoteBox title="Attack Chains & active defense">
         <StatGrid>
           <Stat label="Guard" value={`${num0(sheet.chain.guardCurrent)} of ${d.guardMax}`} /><Stat label="Max Chain Length" value={String(d.chainLength)} />
           <Stat label="Dodge / Parry" value={`${signed(d.dodge)} / ${signed(d.parry)}`} /><Stat label="Momentum Die" value={`d${sheet.momentum.die}`} /><Stat label="Stasis DC" value={String(d.stasisDC)} />
@@ -304,11 +312,16 @@ export function CharacterSummary({ sheet, d, id, ownerName, onClose }: { sheet: 
       <DarkBox title="Arcane Core">
         <p><b>Mana:</b> {num0(sheet.arcane.manaCurrent)} of {d.manaMax} · <b>Arcane attack:</b> {signed(d.arcaneAttack)} · <b>Save DC:</b> {d.saveDC} · <b>Max Potency:</b> {ROMAN[sheet.arcane.maxPotency] || '-'}</p>
         <p><b>Known Physicals:</b> {sheet.language.physicals.join(', ') || 'none'} · <b>Aspectuals:</b> {sheet.language.aspectuals.join(', ') || 'none'}</p>
-      </DarkBox>
+      </DarkBox></> : d.slotMax.some((n: number) => n > 0) && (
+        <NoteBox title="Spellcasting">
+          <p><b>Spell attack:</b> {signed(d.spellAttack)} · <b>Save DC:</b> {d.saveDC} · <b>Slots left:</b>{' '}
+            {d.slotMax.map((max: number, i: number) => max > 0 && `${ordinal(i + 1)} ${Math.max(0, max - num0(sheet.spellcasting.slotsUsed[i]))}/${max}`).filter(Boolean).join(', ')}</p>
+        </NoteBox>
+      )}
       <SbHead>Weapons</SbHead>
-      {rows(sheet.weapons, (w) => [`${w.name}${w.chain ? ` - ${w.chain}` : ''}`, [w.atk, w.damage].filter(Boolean).join(' · ')])}
-      <SbHead>Spells &amp; Compositions</SbHead>
-      {rows(sheet.compositions, (r) => [`${r.name}${r.status ? ` (${r.status})` : ''}`, [r.mana !== '' && `${r.mana} Mana`, r.damage].filter(Boolean).join(' · ')])}
+      {rows(sheet.weapons, (w) => [`${w.name}${usesArcane && w.chain ? ` - ${w.chain}` : ''}`, [w.atk, w.damage].filter(Boolean).join(' · ')])}
+      <SbHead>{usesArcane ? <>Spells &amp; Compositions</> : 'Spells'}</SbHead>
+      {rows(sheet.compositions, (r) => [`${r.name}${r.status ? ` (${r.status})` : ''}`, [usesArcane && r.mana !== '' && `${r.mana} Mana`, r.damage].filter(Boolean).join(' · ')])}
       {id && <Button asChild size="sm" variant="outline" className="mt-3"><Link to={`/characters/${id}`} onClick={onClose}><Eye />Open the full sheet</Link></Button>}
     </>
   );

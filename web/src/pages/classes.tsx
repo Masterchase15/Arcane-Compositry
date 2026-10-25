@@ -12,13 +12,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, NativeSelect, Options } from '@/components/fields';
 import { DetailDialog, FeatureTable, Stat, SubclassDetail } from '@/components/details';
-import { HomebrewBar } from '@/components/homebrew-bar';
+import { OriginBadge, OriginLine, RulesetsBar } from '@/components/rulesets-bar';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { matchesWords, ResultBar, SearchInput, useFilters } from '@/components/list';
 import { Empty, ErrorState, Loading, PageHead, Paragraphs } from '@/components/page';
 import { subclassesOf, useClasses, useScope, useSubclasses } from '@/lib/catalog';
+import { cn } from '@/lib/utils';
 
 const ability = (key: string) => ABILITIES.find((a: any) => a.key === key)?.name || key;
+// A class's `caster`: its Mana pool in Arcane Compositry, its spellcasting in plain 5e.
 const POOL: Record<string, string> = { full: 'Full caster', partial: 'Partial caster (about 65%)', martial: 'Martial (about 40%)' };
+const CASTING: Record<string, string> = { full: 'Full spellcaster', partial: 'Half spellcaster', martial: 'No spellcasting' };
+const useCasterLabels = () => (useScope().uses(ARCANE) ? POOL : CASTING);
 
 export default function Classes() {
   const { id } = useParams();
@@ -36,7 +41,9 @@ export default function Classes() {
 const KEYS = ['q', 'pool', 'invocation'] as const;
 
 function ClassIndex({ classes, subclasses }: { classes: any[]; subclasses: any[] }) {
-  const { group, isDM } = useScope();
+  const { group, isDM, uses } = useScope();
+  const arcane = uses(ARCANE);
+  const labels = useCasterLabels();
   const { values: f, set } = useFilters(KEYS);
   const shown = classes.filter((c) => {
     if (f.pool && c.caster !== f.pool) return false;
@@ -48,21 +55,21 @@ function ClassIndex({ classes, subclasses }: { classes: any[]; subclasses: any[]
   return (
     <>
       <PageHead kicker="Who will you be?" title="Classes">
-        Every class available at this table. Open one to see its features, subclasses and how it plays with Arcane Compositry.
+        Every class available at this table. Open one to see its features and subclasses{arcane ? ', and how it plays with Arcane Compositry' : ''}.
       </PageHead>
-      <HomebrewBar />
-      <form role="search" onSubmit={(e) => e.preventDefault()} className="surface mb-5 grid gap-4 p-4 sm:p-5 sm:grid-cols-[2fr_1fr_1fr]">
+      <RulesetsBar />
+      <form role="search" onSubmit={(e) => e.preventDefault()} className={cn('surface mb-5 grid gap-4 p-4 sm:p-5', arcane ? 'sm:grid-cols-[2fr_1fr_1fr]' : 'sm:grid-cols-[2fr_1fr]')}>
         <Field label="Search" htmlFor="q"><SearchInput id="q" value={f.q} onChange={(v) => set({ q: v })} placeholder="Class, subclass or feature" /></Field>
-        <Field label="Mana pool" htmlFor="pool">
+        <Field label={arcane ? 'Mana pool' : 'Spellcasting'} htmlFor="pool">
           <NativeSelect id="pool" value={f.pool} onChange={(e) => set({ pool: e.target.value })}>
-            <option value="">Any</option><Options options={Object.entries(POOL).map(([value, label]) => ({ value, label }))} />
+            <option value="">Any</option><Options options={Object.entries(labels).map(([value, label]) => ({ value, label }))} />
           </NativeSelect>
         </Field>
-        <Field label="Invocation ability" htmlFor="invocation">
+        {arcane && <Field label="Invocation ability" htmlFor="invocation">
           <NativeSelect id="invocation" value={f.invocation} onChange={(e) => set({ invocation: e.target.value })}>
             <option value="">Any</option><Options options={ABILITIES.map((a: any) => ({ value: a.key, label: a.name }))} />
           </NativeSelect>
-        </Field>
+        </Field>}
       </form>
       <ResultBar shown={shown.length} total={classes.length} noun="classes">
         <Button variant="ghost" size="sm" onClick={() => set({ q: '', pool: '', invocation: '' })}>Clear filters</Button>
@@ -74,10 +81,10 @@ function ClassIndex({ classes, subclasses }: { classes: any[]; subclasses: any[]
             const subs = subclassesOf(c, subclasses);
             return (
               <Link key={c.id} to={`/classes/${c.id}`} className="group surface p-5 transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg">
-                <p className="kicker">d{c.hitDie} · {POOL[c.caster].split(' (')[0]}{c.origin === 'file' ? '' : ' · Custom'}{c.hidden ? ' · Hidden from players' : ''}</p>
-                <h3 className="mt-1 text-xl font-semibold group-hover:text-primary">{c.name}</h3>
+                <p className="kicker">d{c.hitDie} · {labels[c.caster].split(' (')[0]}{c.hidden ? ' · Hidden from players' : ''}</p>
+                <h3 className="mt-1 text-xl font-semibold group-hover:text-primary">{c.name}<OriginBadge entry={c} className="ml-2 align-middle" /></h3>
                 <p className="mt-1 text-muted-foreground">{c.role}</p>
-                <p className="mt-2 text-sm"><b>Primary:</b> {c.primaryAbility || ability(c.invocation)}<br /><b>Invocation:</b> {ability(c.invocation)}</p>
+                <p className="mt-2 text-sm"><b>Primary:</b> {c.primaryAbility || ability(c.invocation)}{arcane && <><br /><b>Invocation:</b> {ability(c.invocation)}</>}</p>
                 {subs.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{subs.map((s: any) => <Badge key={s.id} variant="secondary">{s.name}</Badge>)}</div>}
               </Link>
             );
@@ -90,7 +97,8 @@ function ClassIndex({ classes, subclasses }: { classes: any[]; subclasses: any[]
 
 // ── One class ────────────────────────────────────────────────────────────────
 function ClassPage({ c, subclasses }: { c: any; subclasses: any[] }) {
-  const { group, isDM } = useScope();
+  const { group, isDM, uses } = useScope();
+  const arcane = uses(ARCANE);
   const [params, setParams] = useSearchParams();
   const openSub = subclasses.find((s) => s.id === params.get('subclass'));
   const close = () => setParams((p) => { p.delete('subclass'); return p; }, { replace: true });
@@ -99,7 +107,7 @@ function ClassPage({ c, subclasses }: { c: any; subclasses: any[] }) {
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-3"><Link to="/classes"><ArrowLeft />All classes</Link></Button>
-      <PageHead kicker={`Class${c.origin === 'file' ? '' : ' · Custom'}${c.hidden ? ' · Hidden from players' : ''}`} title={c.name}>
+      <PageHead kicker={<>Class{c.hidden ? ' · Hidden from players' : ''}<OriginBadge entry={c} /></>} title={c.name}>
         <p className="font-serif">{c.role}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild><Link to={`/characters/new?class=${encodeURIComponent(c.name)}`}><Plus />Create a {c.name}</Link></Button>
@@ -111,7 +119,7 @@ function ClassPage({ c, subclasses }: { c: any; subclasses: any[] }) {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-8">
           <Paragraphs text={c.description} className="text-[1.05rem]" />
-          {c.compositry && (
+          {arcane && c.compositry && (
             <section className="space-y-2 rounded-xl bg-header p-5 text-header-foreground">
               <h3 className="text-xl font-bold text-[#ecd98f]">In Arcane Compositry</h3>
               <Paragraphs text={c.compositry} />
@@ -133,7 +141,7 @@ function ClassPage({ c, subclasses }: { c: any; subclasses: any[] }) {
                     className="group grid gap-1.5 surface p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg">
                     <span className="kicker">
                       {s.features.length ? `Features at level${levelsOf(s).length > 1 ? 's' : ''} ${levelsOf(s).join(', ')}` : 'Subclass'}
-                      {s.quick || s.origin === 'file' ? '' : ' · Custom'}{s.hidden ? ' · Hidden from players' : ''}
+                      {s.hidden ? ' · Hidden from players' : ''}{!s.quick && <OriginBadge entry={s} />}
                     </span>
                     <strong className="font-serif text-lg group-hover:text-primary">{s.name}</strong>
                     <span className="text-muted-foreground">{s.description}</span>
@@ -144,7 +152,7 @@ function ClassPage({ c, subclasses }: { c: any; subclasses: any[] }) {
               </div>
             ) : <Empty title="No subclasses yet">No subclasses have been added for this class yet.</Empty>}
           </section>
-          {c.source && <p className="text-sm italic text-muted-foreground">Source: {c.source}. Feature text is a short summary - see your rulebook for exact wording.</p>}
+          <div><OriginLine entry={c} /><p className="text-sm italic text-muted-foreground">Feature text is a short summary - see your rulebook for exact wording.</p></div>
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -156,11 +164,19 @@ function ClassPage({ c, subclasses }: { c: any; subclasses: any[] }) {
             <Stat label="Weapons" value={c.weapons} /><Stat label="Armor" value={c.armor} /><Stat label="Tools" value={c.tools} />
             <Stat label="Starting equipment" value={c.equipment} />
           </TraitCard>
-          <TraitCard title="Arcane numbers">
-            <Stat label="Invocation ability" value={ability(c.invocation)} />
-            <Stat label="Mana pool" value={POOL[c.caster]} />
-            <Stat label="Max Mana at level 1 / 5 / 10 / 20" value={[1, 5, 10, 20].map((l) => F.maxMana(l, c.caster)).join(' / ')} />
-          </TraitCard>
+          {arcane ? (
+            <TraitCard title="Arcane numbers">
+              <Stat label="Invocation ability" value={ability(c.invocation)} />
+              <Stat label="Mana pool" value={POOL[c.caster]} />
+              <Stat label="Max Mana at level 1 / 5 / 10 / 20" value={[1, 5, 10, 20].map((l) => F.maxMana(l, c.caster)).join(' / ')} />
+            </TraitCard>
+          ) : c.caster !== 'martial' && (
+            <TraitCard title="Spellcasting">
+              <Stat label="Spellcasting ability" value={ability(c.invocation)} />
+              <Stat label="Caster" value={CASTING[c.caster]} />
+              <Stat label="Highest spell level at 1 / 5 / 10 / 20" value={[1, 5, 10, 20].map((l) => F.spellSlots(l, c.caster).filter((n: number) => n > 0).length).join(' / ')} />
+            </TraitCard>
+          )}
         </aside>
       </div>
 

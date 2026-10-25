@@ -42,7 +42,8 @@ import { CharacterSummary, DetailDialog, NpcDetail, Picker } from '@/components/
 import { Field } from '@/components/fields';
 import { Empty, ErrorState, Loading } from '@/components/page';
 import { api, errorMessage, type CharacterSummary as CharRow } from '@/lib/api';
-import { useApi, useNpcs } from '@/lib/catalog';
+import { useApi, useNpcs, useScope } from '@/lib/catalog';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { cn } from '@/lib/utils';
 
 type Num = number | '';
@@ -101,6 +102,9 @@ const FIELDS: { key: keyof Combatant; label: string; of?: keyof Combatant; onlyI
   { key: 'guard', label: 'Guard', of: 'guardMax' },
   { key: 'mana', label: 'Mana', of: 'manaMax', onlyIfSet: true },
 ];
+/** Arcane Compositry numbers: only tracked in campaigns that use it. */
+const ARCANE_KEYS: (keyof Combatant)[] = ['guard', 'guardMax', 'mana', 'manaMax'];
+const useTracked = () => { const arcane = useScope().uses(ARCANE); return (key: keyof Combatant) => arcane || !ARCANE_KEYS.includes(key); };
 /** The boxes in the Details pop-up. */
 const DETAIL_FIELDS: [keyof Combatant, string, ('text' | 'number')?][] = [
   ['name', 'Name', 'text'], ['initiative', 'Initiative'], ['initBonus', 'Init. bonus'],
@@ -202,6 +206,7 @@ export function InitiativeTab({ groupId }: { groupId: string }) {
 
 function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; onEnded: () => void }) {
   const confirm = useConfirm();
+  const arcane = useScope().uses(ARCANE);
   const npcs = useNpcs();
   const party = useApi<{ characters: CharRow[] }>('/group/characters');
   const [name, setName] = useState(enc.name);
@@ -266,7 +271,7 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
         <Button variant="outline" onClick={() => mutate(sortByInitiative)}>Sort by initiative</Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        The combatant at the top is up. Press <b>Turn done</b> and they move to the bottom; Guard refreshes for whoever is up next.
+        The combatant at the top is up. Press <b>Turn done</b> and they move to the bottom{arcane ? '; Guard refreshes for whoever is up next' : ''}.
         Type an initiative yourself if you roll real dice. HP and other numbers here are the tracker's own copy.
       </p>
 
@@ -327,6 +332,7 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
 function CombatantCard({ c, position, isUp, mutate, onDetails }: {
   c: Combatant; position: number; isUp: boolean; mutate: (fn: (d: Data) => void) => void; onDetails: () => void;
 }) {
+  const tracked = useTracked();
   const [amount, setAmount] = useState('');
   const low = c.hp !== '' && c.hpMax !== '' && F.num(c.hp) <= F.num(c.hpMax) / 2;
   const me = (d: Data) => d.combatants.find((x) => x.id === c.id)!;
@@ -359,7 +365,7 @@ function CombatantCard({ c, position, isUp, mutate, onDetails }: {
       </div>
       {!c.dead && (
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-8">
-          {FIELDS.filter((f) => !(f.onlyIfSet && c[f.key] === '' && c[f.of!] === '')).map((f) => (
+          {FIELDS.filter((f) => tracked(f.key) && !(f.onlyIfSet && c[f.key] === '' && c[f.of!] === '')).map((f) => (
             <Field key={f.key} label={`${f.label}${f.of && c[f.of] !== '' ? ` / ${c[f.of]}` : ''}`} htmlFor={`${c.id}-${f.key}`}>
               <Input id={`${c.id}-${f.key}`} type="number" inputMode="numeric" value={c[f.key] as Num} className="h-8 tabular-nums"
                 onChange={(e) => mutate((d) => { (me(d) as any)[f.key] = typed(e.target.value, true); })}
@@ -422,6 +428,7 @@ function HowMany({ npc, onClose, onAdd }: { npc: any; onClose: () => void; onAdd
 function CombatantDetails({ c, onClose, set, refresh }: {
   c: Combatant; onClose: () => void; set: (key: keyof Combatant, value: unknown) => void; refresh: (nums: Partial<Combatant>) => void;
 }) {
+  const tracked = useTracked();
   const [sheet, setSheet] = useState<{ sheet: any; ownerName: string } | null | 'missing'>(null);
   useEffect(() => {
     if (c.source !== 'character') return;
@@ -436,7 +443,7 @@ function CombatantDetails({ c, onClose, set, refresh }: {
         <h4 className="font-sans text-sm font-bold uppercase tracking-wide text-gold-ink">In this encounter</h4>
         <p className="text-sm text-muted-foreground">Change anything here to keep track during the fight. It is saved with the encounter{c.source === 'character' ? " and does not change the player's own sheet" : ''}.</p>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          {DETAIL_FIELDS.map(([key, label, type = 'number']) => (
+          {DETAIL_FIELDS.filter(([key]) => tracked(key)).map(([key, label, type = 'number']) => (
             <Field key={key} label={label} htmlFor={`d-${key}`} className={key === 'conditions' || key === 'name' ? 'col-span-2' : undefined}>
               <Input id={`d-${key}`} type={type} inputMode={type === 'number' ? 'numeric' : undefined} autoComplete="off" value={c[key] as any}
                 onChange={(e) => set(key, typed(e.target.value, type === 'number'))} />

@@ -29,16 +29,24 @@ import { CoreTab } from '@/components/sheet/core-tab';
 import { ArcaneTab } from '@/components/sheet/arcane-tab';
 import { FeaturesTab } from '@/components/sheet/features-tab';
 import { ReferenceTab } from '@/components/sheet/reference-tab';
+import { SpellsTab } from '@/components/sheet/spells-tab';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { api, errorMessage } from '@/lib/api';
-import { GroupScope, useApi } from '@/lib/catalog';
+import { GroupScope, useApi, useScope } from '@/lib/catalog';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 
-const TABS = [
+// With Arcane Compositry: the Arcane tab and its Reference cheat sheets. Without it (plain 5e): a Spells tab.
+const ARCANE_TABS = [
   { id: 'core', label: 'Core & Combat', Tab: CoreTab },
   { id: 'arcane', label: 'Arcane', Tab: ArcaneTab },
   { id: 'features', label: 'Features & Gear', Tab: FeaturesTab },
   { id: 'reference', label: 'Reference', Tab: ReferenceTab },
+];
+const PLAIN_TABS = [
+  { id: 'core', label: 'Core & Combat', Tab: CoreTab },
+  { id: 'spells', label: 'Spells', Tab: SpellsTab },
+  { id: 'features', label: 'Features & Gear', Tab: FeaturesTab },
 ];
 
 interface Loaded { id: string; ownerId: string; ownerName: string; groupId: string | null; groupName: string; data: any }
@@ -65,6 +73,8 @@ type SaveState = { state: 'saved' | 'saving' } | { state: 'error'; message: stri
 function Sheet({ loaded }: { loaded: Loaded }) {
   const { user } = useSession();
   const [params, setParams] = useSearchParams();
+  const arcane = useScope().uses(ARCANE);
+  const TABS = arcane ? ARCANE_TABS : PLAIN_TABS;
   const tab = TABS.find((t) => t.id === params.get('tab')) ?? TABS[0];
   const [c, setC] = useState(() => upgrade(loaded.data));
   const d = useMemo(() => derive(c), [c]);
@@ -141,20 +151,23 @@ function Sheet({ loaded }: { loaded: Loaded }) {
         <SaveBadge save={save} retry={flush} />
       </header>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <div className={cn('mb-6 grid grid-cols-2 gap-3 sm:gap-4', arcane && 'xl:grid-cols-4')}>
         <Vital icon={<Heart />} label="Hit Points" tone="bg-hp text-hp" value={F.num(c.hp.current)} max={F.num(c.hp.max)}
           of={<>of {c.hp.max}{F.num(c.hp.temp) ? ` (+${F.num(c.hp.temp)} temp)` : ''}</>}>
           <Stepper path="hp.current" label="current hit points" max={F.num(c.hp.max, Infinity) || Infinity} />
         </Vital>
-        <Vital icon={<Droplet />} label="Mana" tone="bg-mana text-mana" value={F.num(c.arcane.manaCurrent)} max={d.manaMax} of={<>of {d.manaMax}</>}>
+        {arcane && <><Vital icon={<Droplet />} label="Mana" tone="bg-mana text-mana" value={F.num(c.arcane.manaCurrent)} max={d.manaMax} of={<>of {d.manaMax}</>}>
           <Stepper path="arcane.manaCurrent" label="current Mana" max={d.manaMax} />
         </Vital>
         <Vital icon={<Shield />} label="Guard" tone="bg-gold text-gold-ink" value={F.num(c.chain.guardCurrent)} max={d.guardMax}
           of={<>of {d.guardMax}{F.num(c.chain.guardCurrent) <= 0 && <b className="text-destructive"> - Broken</b>}</>}>
           <Stepper path="chain.guardCurrent" label="current Guard" max={d.guardMax} />
-        </Vital>
+        </Vital></>}
         <div className="surface grid grid-cols-2 gap-px overflow-hidden bg-border p-0">
-          {([['Armor Class', d.acTotal], ['Prof. bonus', F.signed(d.profBonus)], ['Save DC', d.saveDC], ['Momentum', `d${c.momentum.die}`]] as const).map(([label, value]) => (
+          {(arcane
+            ? [['Armor Class', d.acTotal], ['Prof. bonus', F.signed(d.profBonus)], ['Save DC', d.saveDC], ['Momentum', `d${c.momentum.die}`]] as const
+            : [['Armor Class', d.acTotal], ['Prof. bonus', F.signed(d.profBonus)], ['Spell save DC', d.saveDC], ['Initiative', F.signed(d.initiative)]] as const
+          ).map(([label, value]) => (
             <div key={label} className="flex flex-col items-center justify-center bg-card px-2 py-3 text-center">
               <span className="font-serif text-2xl font-bold tabular-nums"><RollingNumber value={value} /></span>
               <span className="text-xs font-semibold text-muted-foreground">{label}</span>

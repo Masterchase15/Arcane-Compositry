@@ -42,6 +42,7 @@ test('a database from the original version upgrades without losing anything', as
   const camp = me.groups[0];
   assert.equal(camp.name, 'Our campaign');
   assert.equal(camp.role, 'dm', 'the DM is still the DM');
+  assert.deepEqual(camp.rulesets, ['dnd5e', 'arcane'], 'and plays with every ruleset, as before');
   assert.equal(me.user.isAdmin, true, 'the old DM became the site admin');
   assert.equal(me.user.askForEmail, true, 'and is asked for an email');
 
@@ -49,7 +50,9 @@ test('a database from the original version upgrades without losing anything', as
   const party = (await dm.get('/group/characters', opts)).body.characters;
   assert.deepEqual(party.map((c) => c.name), ['Oldchar']);
   assert.deepEqual((await dm.get('/notes?kind=lore', opts)).body.notes.map((n) => n.title), ['Old lore']);
-  assert.ok((await dm.get('/items', opts)).body.items.some((i) => i.name === 'Old Sword'), 'homebrew kept');
+  const oldSword = (await dm.get('/items', opts)).body.items.find((i) => i.name === 'Old Sword');
+  assert.ok(oldSword, 'homebrew kept');
+  assert.equal(oldSword.ruleset, 'dnd5e', 'homebrew saved before rulesets gets one');
 
   const player = server.client();
   await player.post('/auth/login', { username: 'oldplayer', password: 'password123' });

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = [
-  'shared/rules/constants.js', 'shared/rules/formulas.js', 'shared/rules/character.js', 'shared/rules/codex-content.js',
+  'shared/rules/constants.js', 'shared/rules/formulas.js', 'shared/rules/character.js', 'shared/rules/codex-content.js', 'shared/rules/rulesets.js',
   'web/src/lib/calculators.js', 'web/src/content/guide.js',
 ];
 

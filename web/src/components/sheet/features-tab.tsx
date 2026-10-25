@@ -30,7 +30,7 @@ export function FeaturesTab() {
       <Panel title="Class Features & Feats"><AreaF path="features.classFeatures" label="Class features & feats" tall /></Panel>
       <div className="grid gap-5">
         <Panel title="Species Traits"><AreaF path="features.speciesTraits" label="Species traits" /></Panel>
-        <Panel title="Combat / Arcane Special Rules"><AreaF path="features.specialRules" label="Combat / arcane special rules" /></Panel>
+        <Panel title="Special Rules"><AreaF path="features.specialRules" label="Combat, magic and other special rules" /></Panel>
       </div>
 
       <Panel title="Inventory" className="lg:col-span-2" bodyClassName="space-y-3">

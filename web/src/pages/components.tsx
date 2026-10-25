@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, NativeSelect, Options } from '@/components/fields';
 import { ComponentDetail, DetailDialog } from '@/components/details';
-import { HomebrewBar } from '@/components/homebrew-bar';
+import { OriginBadge, RulesetOff, RulesetsBar } from '@/components/rulesets-bar';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { AddToCharacter, characterLabel, ListRow, matchesWords, ResultBar, SearchInput, SpellListTabs, useFilters, useMyCharacters } from '@/components/list';
 import { Empty, ErrorState, Loading, PageHead } from '@/components/page';
 import { useApi, useComponents, useScope } from '@/lib/catalog';
@@ -22,6 +23,18 @@ import { learnComponent } from '@/lib/spellbook';
 const KEYS = ['q', 'kind', 'char', 'component'] as const;
 
 export default function ComponentsPage() {
+  const { uses } = useScope();
+  if (uses(ARCANE)) return <ComponentList />;
+  return (
+    <>
+      <PageHead kicker="The Arcane language" title="Physical & Aspectual Components"><div><SpellListTabs current="components" /></div></PageHead>
+      <RulesetsBar />
+      <RulesetOff ruleset={ARCANE} what="Physical & Aspectual Components" />
+    </>
+  );
+}
+
+function ComponentList() {
   const { group, isDM } = useScope();
   const { data: components, error, reload } = useComponents();
   const { characters } = useMyCharacters();
@@ -46,7 +59,7 @@ export default function ComponentsPage() {
         What magic is made of. Physical Components are substances; Aspectual Components are properties applied to them. Characters learn them over the campaign - more are out there to be discovered.
         <div><SpellListTabs current="components" /></div>
       </PageHead>
-      <HomebrewBar />
+      <RulesetsBar />
 
       <form role="search" onSubmit={(e) => e.preventDefault()} className="surface mb-5 grid gap-4 p-4 sm:p-5 sm:grid-cols-[2fr_1fr_1fr]">
         <Field label="Search" htmlFor="q"><SearchInput id="q" value={f.q} onChange={(v) => set({ q: v })} placeholder="Name, behaviour or tag" /></Field>
@@ -77,6 +90,7 @@ export default function ComponentsPage() {
                   {known && (known.includes(c.name)
                     ? <Badge variant="outline" className="bg-ok/15 text-ok">Known</Badge>
                     : <Badge variant="outline">Not learned</Badge>)}
+                  <OriginBadge entry={c} />
                   {c.hidden && <Badge variant="outline" className="ml-1 border-gold-line bg-gold-soft text-gold-ink">Hidden</Badge>}
                 </>}
                 right={c.tendrilColor} />

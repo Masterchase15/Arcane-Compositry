@@ -19,7 +19,7 @@ export function ReferenceTab() {
         const ch = findChapter(cid);
         return ch && <Panel key={cid} title={ch.title}><RichHtml html={ch.html} /></Panel>;
       })}
-      <Button asChild variant="outline"><Link to="/codex"><BookOpen />Open the full codex</Link></Button>
+      <Button asChild variant="outline"><Link to="/codex/arcane-compositry"><BookOpen />Open the full codex</Link></Button>
     </div>
   );
 }

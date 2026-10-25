@@ -19,7 +19,8 @@ import { Field, NativeSelect, Options } from '@/components/fields';
 import { PageHead, RequireUser } from '@/components/page';
 import { Panel, ResultTile } from '@/components/panel';
 import { api, errorMessage } from '@/lib/api';
-import { GroupScope } from '@/lib/catalog';
+import { GroupScope, useScope } from '@/lib/catalog';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { useSession } from '@/lib/session';
 
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
@@ -38,12 +39,12 @@ function suggestedScores(className: string): Record<string, number> {
 
 export default function NewCharacter() {
   const [params] = useSearchParams();
-  const { findGroup, homebrew } = useSession();
+  const { findGroup, browse } = useSession();
   const campaign = findGroup(params.get('campaign'));
   return (
     <RequireUser what="create a character">
-      {/* The form uses the campaign's classes (its homebrew), so it sits in that campaign's scope. */}
-      <GroupScope groupId={campaign?.id ?? homebrew}>
+      {/* The form uses the campaign's classes (its rulesets and homebrew), so it sits in that campaign's scope. */}
+      <GroupScope groupId={campaign?.id ?? browse.campaign}>
         <Form key={campaign?.id ?? 'none'} campaignId={campaign?.id ?? null} startClassName={params.get('class')} />
       </GroupScope>
     </RequireUser>
@@ -52,6 +53,7 @@ export default function NewCharacter() {
 
 function Form({ campaignId, startClassName }: { campaignId: string | null; startClassName: string | null }) {
   const { user, groups } = useSession();
+  const arcane = useScope().uses(ARCANE);
   const navigate = useNavigate();
   const startClass = (findClass(startClassName) || findClass('Wizard') || CLASSES[0])?.name ?? '';
   const [basics, setBasics] = useState({
@@ -106,7 +108,7 @@ function Form({ campaignId, startClassName }: { campaignId: string | null; start
               <Input id="name" maxLength={80} autoComplete="off" value={basics.name} aria-invalid={nameError}
                 onChange={(e) => { set('name', e.target.value); setNameError(false); }} />
             </Field>
-            <Field label="Class *" htmlFor="className" hint={cls && <>{cls.role} d{cls.hitDie} Hit Die. Invocation: {cls.invocation.toUpperCase()}. <Link className="underline" to="/classes">Compare the classes</Link></>}>
+            <Field label="Class *" htmlFor="className" hint={cls && <>{cls.role} d{cls.hitDie} Hit Die. {arcane ? 'Invocation' : 'Spellcasting'}: {cls.invocation.toUpperCase()}. <Link className="underline" to="/classes">Compare the classes</Link></>}>
               <NativeSelect id="className" value={basics.className} onChange={(e) => set('className', e.target.value)}>
                 <Options options={CLASSES.map((x: any) => x.name)} />
               </NativeSelect>
@@ -145,15 +147,24 @@ function Form({ campaignId, startClassName }: { campaignId: string | null; start
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <Panel title="Starting numbers" bodyClassName="space-y-3">
-            <p className="text-sm text-muted-foreground">Worked out from the codex. You can change any of them on the sheet.</p>
-            <div className="grid grid-cols-2 gap-2.5">
-              <ResultTile label="Hit Points" value={c.hp.max} note={c.hp.hitDice} />
-              <ResultTile label="Max Mana" value={d.manaMax} note={F.CASTER_TYPES[c.casterType]?.label} />
-              <ResultTile label="Proficiency" value={F.signed(d.profBonus)} />
-              <ResultTile label="Guard" value={d.guardMax} note="2 + PB" />
-              <ResultTile label="Chain Length" value={d.chainLength} />
-              <ResultTile label="Arcane attack" value={F.signed(d.arcaneAttack)} note={`Save DC ${d.saveDC}`} />
-            </div>
+            <p className="text-sm text-muted-foreground">Worked out from the rules. You can change any of them on the sheet.</p>
+            {arcane ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                <ResultTile label="Hit Points" value={c.hp.max} note={c.hp.hitDice} />
+                <ResultTile label="Max Mana" value={d.manaMax} note={F.CASTER_TYPES[c.casterType]?.label} />
+                <ResultTile label="Proficiency" value={F.signed(d.profBonus)} />
+                <ResultTile label="Guard" value={d.guardMax} note="2 + PB" />
+                <ResultTile label="Chain Length" value={d.chainLength} />
+                <ResultTile label="Arcane attack" value={F.signed(d.arcaneAttack)} note={`Save DC ${d.saveDC}`} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                <ResultTile label="Hit Points" value={c.hp.max} note={c.hp.hitDice} />
+                <ResultTile label="Proficiency" value={F.signed(d.profBonus)} />
+                <ResultTile label="Spell slots" value={d.slotMax.filter((n: number) => n > 0).join(' / ') || 'None'} note="By spell level" />
+                <ResultTile label="Spell attack" value={F.signed(d.spellAttack)} note={`Save DC ${d.saveDC}`} />
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={busy}><Check />Create character</Button>
             <Button asChild variant="ghost" className="w-full"><Link to="/characters">Cancel</Link></Button>
           </Panel>

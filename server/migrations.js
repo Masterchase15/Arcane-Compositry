@@ -164,6 +164,10 @@ export const MIGRATIONS = [
      updated_at TEXT NOT NULL,
      PRIMARY KEY (user_id, book)
    );`,
+
+  // 8 - Rulesets (shared/rules/rulesets.js): the ones each campaign uses, as a JSON list of ids.
+  //     Campaigns that existed before get every ruleset, so nothing disappears for them.
+  `ALTER TABLE groups ADD COLUMN rulesets TEXT NOT NULL DEFAULT '["dnd5e","arcane"]';`,
 ];
 
 /** A group's invite code: 8 letters and digits, leaving out ones that look alike (0/O, 1/I/L). */

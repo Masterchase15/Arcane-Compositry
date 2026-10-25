@@ -1,6 +1,6 @@
 /**
  * pages/home.tsx - the landing page (/): a campaign companion for players and
- * DMs, the Arcane Compositry magic built into it, and how to get started. Signed-in people also
+ * DMs, the rulesets a campaign can use (5e, and the Arcane Compositry expansion), and how to get started. Signed-in people also
  * get a "pick up where you left off" strip with their characters and campaigns.
  *
  * The words live in the arrays below (STEPS, PLAYER_TOOLS, DM_TOOLS, START, FAQ),
@@ -8,7 +8,7 @@
  */
 import { Link, useNavigate } from 'react-router';
 import {
-  ArrowRight, BookOpen, Calculator, ChevronRight, Compass, Crown, Flag, Flame, Gem, KeyRound, Layers, NotebookPen, ScrollText,
+  ArrowRight, BookOpen, Calculator, ChevronRight, Compass, Crown, Flag, Flame, Gem, KeyRound, Layers, Library, NotebookPen, ScrollText,
   Shield, Skull, Smartphone, Sparkles, Swords, Sword, UserPlus, Users, Zap, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ const STEPS: { icon: LucideIcon; label: string; question: string; text: string; 
 ];
 
 const PLAYER_TOOLS: { to: string; icon: LucideIcon; title: string; text: string }[] = [
-  { to: '/characters', icon: Users, title: 'Character sheets', text: 'A full sheet saved to your account and open on any device. HP, Mana, Guard and Momentum update as you play.' },
+  { to: '/characters', icon: Users, title: 'Character sheets', text: 'A full sheet saved to your account and open on any device. HP, spell slots or Mana, and everything else update as you play.' },
   { to: '/campaigns', icon: Flag, title: 'Your campaign', text: "Join with your DM's invite code to see the party and the campaign's own spells, items and classes." },
   { to: '/craft', icon: Sparkles, title: 'Spellcrafter', text: 'Build a spell from parts. Mana, damage dice, attack bonus and Save DC are worked out for you.' },
   { to: '/codex', icon: BookOpen, title: 'Rules library', text: 'The full rules codex, every spell, item and class, and a calculator for every formula.' },
@@ -37,7 +37,8 @@ const PLAYER_TOOLS: { to: string; icon: LucideIcon; title: string; text: string 
 
 const DM_TOOLS: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: KeyRound, title: 'Run your campaign', text: 'Invite players with a code, see every sheet in the party, and step in to fix a character when needed.' },
-  { icon: Sword, title: 'Homebrew without code', text: 'Add spells, items, classes and Components. Keep them hidden until you choose to reveal them.' },
+  { icon: Library, title: 'Choose your rulesets', text: 'Play D&D 5th Edition as written, or add the Arcane Compositry expansion. Players only see the rules your table uses.' },
+  { icon: Sword, title: 'Homebrew without code', text: 'Add your own spells, items, classes and Components on top of the rulesets. Keep them hidden until you choose to reveal them.' },
   { icon: Swords, title: 'Initiative tracker', text: 'Turn order, HP and Guard for every combatant, with your NPC and enemy stat blocks a click away.' },
   { icon: Skull, title: 'NPC and enemy roster', text: 'Your own stat blocks, never shown to players.' },
   { icon: NotebookPen, title: 'Session notes and lore', text: 'Private notebooks, shared with your co-DMs and saved as you type.' },
@@ -50,7 +51,8 @@ const START: { icon: LucideIcon; title: string; text: string }[] = [
 ];
 
 const FAQ: { icon: LucideIcon; q: string; a: string }[] = [
-  { icon: Users, q: 'Can one site hold several campaigns?', a: 'Yes. Each campaign has its own DM, party, homebrew and notes, and one account can play in several.' },
+  { icon: Users, q: 'Can one site hold several campaigns?', a: 'Yes. Each campaign has its own DM, rulesets, party, homebrew and notes, and one account can play in several.' },
+  { icon: Library, q: 'Can we play plain 5e?', a: 'Yes. Switch off Arcane Compositry for your campaign: sheets use spell slots, and Mana, Components and the Spellcrafter are hidden for it.' },
   { icon: BookOpen, q: 'Do I need to know Arcane Compositry first?', a: 'No. Read the two-minute Quick Start, then let the Spellcrafter and the sheet do the maths while you learn.' },
   { icon: Smartphone, q: 'Can I use it at the table on my phone?', a: 'Yes. Every page works on a phone, and you can install the site as an app from your browser menu.' },
 ];
@@ -76,8 +78,8 @@ export default function Home() {
           <BlurFade delay={0.2}>
             <p className="mt-6 text-lg leading-relaxed text-header-foreground/80 sm:text-xl">
               Players get character sheets that do the maths, the rules at their fingertips and a place to follow the party.
-              DMs get a campaign hub: invites, homebrew, an initiative tracker, an enemy roster and private notes.
-              And it all runs on <b className="font-semibold text-header-foreground">Arcane Compositry</b>, a magic system where you build spells instead of picking them from a list.
+              DMs get a campaign hub: rulesets, invites, homebrew, an initiative tracker, an enemy roster and private notes.
+              Play D&amp;D 5th Edition, and add <b className="font-semibold text-header-foreground">Arcane Compositry</b>: an expansion where you build spells instead of picking them from a list.
             </p>
           </BlurFade>
           <BlurFade delay={0.28} className="mt-9 flex flex-wrap items-center gap-3">
@@ -141,9 +143,9 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* ── The magic system built in ───────────────────────────────────── */}
-      <Section kicker="Built-in magic system" title="Arcane Compositry: every spell answers four questions"
-        intro="Instead of memorising a spell list, a Compositor builds each spell from parts. The rules set its power; you decide how it looks, moves and sounds. Familiar D&D spells are here too, with their Mana cost.">
+      {/* ── The Arcane Compositry expansion ──────────────────────────────── */}
+      <Section kicker="Expansion: Arcane Compositry" title="A magic system where every spell answers four questions"
+        intro="Switch it on for your campaign and, instead of memorising a spell list, a Compositor builds each spell from parts. The rules set its power; you decide how it looks, moves and sounds. Familiar D&D spells stay, cast with Mana instead of slots.">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {STEPS.map((s, i) => (
             <BlurFade key={s.label} delay={0.05 * i} inView className="h-full">

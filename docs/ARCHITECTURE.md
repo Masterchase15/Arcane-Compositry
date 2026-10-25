@@ -58,7 +58,8 @@ For production, `npm run build` makes `dist/` and `node server.js` serves it on
 | `components/codex/`        | The Codex reader: `reader.tsx` (the reading screen), `side-panel.tsx` (contents + bookmarks), `search-dialog.tsx`. |
 | `lib/books.ts`             | The Codex library's data: books, pages, search, bookmarks, reading progress. |
 | `lib/api.ts`               | Talking to the server. |
-| `lib/session.tsx`          | Who is signed in, their campaigns, the Homebrew filter. |
+| `lib/session.tsx`          | Who is signed in, their campaigns, the Rulesets filter. |
+| `components/rulesets-bar.tsx` | The Rulesets filter, the ruleset switches, and the Homebrew badges. |
 | `lib/catalog.tsx`          | Which campaign a page uses (`<GroupScope>`), and the cached list hooks. |
 | `lib/calculators.js`       | Every calculator, as data. |
 | `index.css`                | Tailwind, the colour tokens (light and dark), and the styles for rules text. |
@@ -73,6 +74,7 @@ Everything about the game is in `shared/rules/`:
 | `formulas.js`      | Every table and formula from the codex, with page references. |
 | `character.js`     | The shape of a character sheet and its automatic numbers.     |
 | `codex-content.js` | The rules text, one entry per codex page.                     |
+| `rulesets.js`      | The rulesets a campaign can use (D&D 5e, Arcane Compositry).  |
 
 Pages never do arithmetic themselves; they call `formulas.js`. So tuning a
 number (say, the Mana pool formula) is a one-line change that the Spellcrafter,
@@ -233,20 +235,49 @@ Several campaigns can share one site. Each campaign is a **group**:
 - What is shared by every campaign: the data files in `data/`. A campaign's DM
   edits sit on top of them for that campaign only.
 
+## Rulesets and homebrew
+
+The data files hold published rules, grouped into **rulesets**
+(`shared/rules/rulesets.js`): **D&D 5th Edition** (SRD 5.2, always on) and the
+**Arcane Compositry** expansion (Components, Compositry spells, Catalysts, Mana,
+Attack Chains, Guard, Momentum - explained by the Codex), plus the library's
+other expansions, **Xanathar's Guide to Everything** and **Arcana Unleashed**.
+Those two bring no bundled entries: a DM files the options their table uses
+as homebrew under them (the Ruleset box in the DM forms). Every entry has a
+`ruleset`: its own field, or its file's default (`LIST_DEFS` in
+`server/catalog.js`; Catalyst items count as Arcane Compositry).
+
+Each campaign stores the rulesets its DM picked (`groups.rulesets`, chosen when
+it is started and changed on the Group tab). The server only sends a campaign
+entries from those rulesets. **Homebrew** is what the DM adds on the site
+(`origin: 'custom'`) or changes (`origin: 'override'`); it keeps the ruleset of
+what it belongs to, so it disappears with that ruleset and comes back with it.
+
+On the browser side `useScope().uses(ARCANE)` says whether Arcane Compositry is
+in play. Without it the sheet swaps the Arcane tab for a 5e Spells tab (spell
+slots from `spellSlots()` in `formulas.js`), drops Mana, Guard, Attack Chains and
+Momentum, and the Spellcrafter, Components and Compositry spells say they are
+not in use. A character outside any campaign uses every ruleset.
+
+To add a ruleset: an entry in `RULESETS`, then its data (see the comment at the
+top of `rulesets.js`). Only add content you may publish - the SRD is CC-BY-4.0;
+most official books are not.
+
 The site has two modes, and the address decides which:
 
 - **Browsing** - every page except `/campaign/...`. The Codex, Spellcrafter,
-  calculators and the spell, item and class lists show the standard rules. Those
-  lists (and the Spellcrafter) have a **Homebrew** filter to include one of your
-  campaigns' homebrew; a DM sees that campaign's hidden entries there too.
+  calculators and the spell, item and class lists show the published rules.
+  Those lists (and the Spellcrafter) have a **Rulesets** filter: switch rulesets
+  on and off, or use one of your campaigns - its rulesets and its homebrew; a
+  DM sees that campaign's hidden entries there too.
 - **Inside a campaign** - `/campaign/<id>` (`web/src/pages/campaign.tsx` and
   `components/campaign/`), with a gold campaign banner under the top bar. Tabs:
-  Party (everyone), Homebrew (players), and the DM tools (DMs only):
-  Initiative, Spells, Items, Classes, NPCs, Group, Notes, Lore.
+  Party (everyone), Rules & homebrew (players), and the DM tools (DMs only):
+  Initiative, Spells, Items, Classes, NPCs, Group (with the rulesets), Notes, Lore.
 
 Every page sits inside `<GroupScope>` (`lib/catalog.tsx`), which decides the
-campaign it uses - the hub's own, the character's (on the sheet), or the
-Homebrew filter's choice - loads that campaign's classes and Components into
+campaign and rulesets it uses - the hub's own, the character's (on the sheet), or
+the Rulesets filter's choice - loads that campaign's classes and Components into
 the rules, and only then shows the page. Every API request carries
 `?group=<id>` of that campaign (`lib/api.ts`); the server checks the user is a
 member before using it (`currentGroup()` in `server/api.js`).

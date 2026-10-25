@@ -1,5 +1,5 @@
 /**
- * lib/catalog.tsx - which campaign a page uses, and the spell / item / class lists.
+ * lib/catalog.tsx - which campaign and rulesets a page uses, and the spell / item / class lists.
  *
  * <GroupScope groupId={...}> wraps every page (see App.tsx). It decides the
  * campaign the page's requests are for, loads that campaign's classes and
@@ -7,16 +7,20 @@
  * lists that the formulas read), and only then shows the page.
  *   - inside a campaign hub: that campaign
  *   - the character sheet: the character's campaign
- *   - everywhere else: the Homebrew filter's choice, or none (standard rules)
+ *   - everywhere else: the Rulesets filter's campaign, or none
+ * The rulesets are the campaign's own; with no campaign, the `rulesets` given
+ * (the Rulesets filter's choice), or every ruleset.
  *
  * In a page:
- *   const { group, isDM } = useScope();
- *   const { data: spells } = useSpells();      // cached per campaign
+ *   const { group, isDM, uses } = useScope();
+ *   if (uses(ARCANE)) ...                      // is Arcane Compositry in play here?
+ *   const { data: spells } = useSpells();      // cached per campaign, only the rulesets in use
  *   const { data, reload } = useApi<T>('/characters');   // not cached
  * After a DM edit, call invalidateLists() so every list is fetched again.
  */
-import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { setClasses, setComponents } from '@shared/rules/constants.js';
+import { ARCANE, DEFAULT_RULESETS } from '@shared/rules/rulesets.js';
 import { api, errorMessage, setRequestGroup, type Group } from './api';
 import { useSession } from './session';
 import { Loading } from '@/components/page';
@@ -46,31 +50,49 @@ function cached<T>(groupId: string | null, path: string): Promise<T> {
 }
 
 // ── The scope ────────────────────────────────────────────────────────────────
-interface Scope { group: Group | null; isDM: boolean }
-const ScopeContext = createContext<Scope>({ group: null, isDM: false });
+interface Scope { group: Group | null; isDM: boolean; rulesets: string[]; uses: (ruleset: string) => boolean }
+const scopeFor = (group: Group | null, rulesets: string[]): Scope =>
+  ({ group, isDM: group?.role === 'dm', rulesets, uses: (r) => rulesets.includes(r) });
+const ScopeContext = createContext<Scope>(scopeFor(null, DEFAULT_RULESETS));
 export const useScope = () => useContext(ScopeContext);
 
-export function GroupScope({ groupId, children }: { groupId: string | null; children: ReactNode }) {
+/** Keeps only the entries from the rulesets in use (works on a list, or an object of lists). */
+function inRulesets<T>(data: T, rulesets: string[]): T {
+  const keep = (list: any[]) => list.filter((e) => !e?.ruleset || rulesets.includes(e.ruleset));
+  if (Array.isArray(data)) return keep(data) as T;
+  if (data && typeof data === 'object') {
+    return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, Array.isArray(v) ? keep(v) : v])) as T;
+  }
+  return data;
+}
+
+export function GroupScope({ groupId, rulesets, children }: { groupId: string | null; rulesets?: string[]; children: ReactNode }) {
   const { findGroup, loaded } = useSession();
   const group = findGroup(groupId);
   const id = group?.id ?? null;
+  const active = group?.rulesets ?? rulesets ?? DEFAULT_RULESETS;
+  const key = `${id}|${active.join(',')}`;
   const v = useSyncExternalStore(subscribe, () => version);
-  const [ready, setReady] = useState<string | null>(null); // the "id|version" that is loaded
+  const [ready, setReady] = useState<string | null>(null); // the "id|rulesets|version" that is loaded
 
   useEffect(() => {
     if (!loaded) return;
     let alive = true;
     setRequestGroup(id);
     Promise.all([
-      cached<{ classes: any[] }>(id, '/classes').then((r) => setClasses(r.classes)),
-      cached<{ components: any[] }>(id, '/components').then((r) => setComponents(r.components)),
+      cached<{ classes: any[] }>(id, '/classes').then((r) => setClasses(inRulesets(r.classes, active))),
+      active.includes(ARCANE)
+        ? cached<{ components: any[] }>(id, '/components').then((r) => setComponents(inRulesets(r.components, active)))
+        : setComponents([]),
     ]).catch(() => { /* the page shows its own errors; the rules fall back to empty lists */ })
-      .finally(() => { if (alive) setReady(`${id}|${v}`); });
+      .finally(() => { if (alive) setReady(`${key}|${v}`); });
     return () => { alive = false; };
-  }, [id, v, loaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, v, loaded]);
 
-  if (ready !== `${id}|${v}`) return <Loading />;
-  return <ScopeContext.Provider value={{ group, isDM: group?.role === 'dm' }}>{children}</ScopeContext.Provider>;
+  const scope = useMemo(() => scopeFor(group, active), [group, key]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (ready !== `${key}|${v}`) return <Loading />;
+  return <ScopeContext.Provider value={scope}>{children}</ScopeContext.Provider>;
 }
 
 // ── Data hooks ───────────────────────────────────────────────────────────────
@@ -97,9 +119,9 @@ export function useApi<T = any>(path: string | null): Loaded<T> {
 }
 
 export function useList<T>(path: string, pick: (r: any) => T): Loaded<T> {
-  const { group } = useScope();
+  const { group, rulesets } = useScope();
   const v = useSyncExternalStore(subscribe, () => version);
-  return useLoad<T>(() => cached<any>(group?.id ?? null, path).then(pick), [path, group?.id, v]);
+  return useLoad<T>(() => cached<any>(group?.id ?? null, path).then((r) => inRulesets(pick(r), rulesets)), [path, group?.id, rulesets.join(','), v]);
 }
 
 export interface SpellLists { codified: any[]; compositry: any[] }

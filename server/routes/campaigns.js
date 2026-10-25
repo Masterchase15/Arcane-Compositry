@@ -1,12 +1,13 @@
 /**
  * server/routes/campaigns.js - starting, joining and leaving campaigns ("groups"), and the
- * DM's Group tab: invite code, name, members.
+ * DM's Group tab: invite code, name, rulesets, members.
  *
  * Route lines: [METHOD, path, who may call it, handler] - see server/api.js.
  */
 import crypto from 'node:crypto';
 import { db, newInviteCode } from '../db.js';
 import { fail, throttle } from '../http.js';
+import { cleanRulesets, parseRulesets, DEFAULT_RULESETS } from '../../shared/rules/rulesets.js';
 
 // ── Campaign invite codes ─────────────────────────────────────────────────────
 export const cleanCode = (v) => String(v ?? '').trim();
@@ -17,15 +18,20 @@ export function addMember(groupId, userId, role) {
 }
 
 // ── Campaigns ("groups" in the code) ───────────────────────────────────────────────────────────────────
-export const groupOut = (g) => ({ id: g.id, name: g.name, role: g.role, ...(g.role === 'dm' ? { inviteCode: g.invite_code } : {}) });
+export const groupOut = (g) => ({
+  id: g.id, name: g.name, role: g.role, rulesets: parseRulesets(g.rulesets),
+  ...(g.role === 'dm' ? { inviteCode: g.invite_code } : {}),
+});
 const groupName = (v) => String(v ?? '').trim().slice(0, 60);
 
-/** Anyone signed in can start a group; they become its DM. */
+/** Anyone signed in can start a group; they become its DM. `rulesets` (optional) = the ruleset ids it uses. */
 function createGroup({ user, body }) {
   const name = groupName(body.name);
   if (!name) throw fail(400, 'Give the group a name.', { name: 'Give the group a name.' });
+  const rulesets = Array.isArray(body.rulesets) ? cleanRulesets(body.rulesets) : DEFAULT_RULESETS;
   const id = crypto.randomUUID();
-  db.prepare('INSERT INTO groups (id, name, invite_code, created_at) VALUES (?,?,?,?)').run(id, name, newInviteCode(), new Date().toISOString());
+  db.prepare('INSERT INTO groups (id, name, invite_code, created_at, rulesets) VALUES (?,?,?,?,?)')
+    .run(id, name, newInviteCode(), new Date().toISOString(), JSON.stringify(rulesets));
   addMember(id, user.id, 'dm');
   return { group: groupOut({ ...db.prepare('SELECT * FROM groups WHERE id = ?').get(id), role: 'dm' }) };
 }
@@ -65,6 +71,17 @@ function renameGroup({ group, body }) {
   if (!name) throw fail(400, 'Give the group a name.');
   db.prepare('UPDATE groups SET name = ? WHERE id = ?').run(name, group.id);
   return { ok: true, name };
+}
+
+/**
+ * The rulesets the campaign uses. Turning one off hides its entries (and any
+ * homebrew made for it) from the campaign; turning it back on brings them back.
+ */
+function setRulesets({ group, body }) {
+  if (!Array.isArray(body.rulesets)) throw fail(400, 'Send the list of rulesets.');
+  const rulesets = cleanRulesets(body.rulesets);
+  db.prepare('UPDATE groups SET rulesets = ? WHERE id = ?').run(JSON.stringify(rulesets), group.id);
+  return { ok: true, rulesets };
 }
 
 /** A new invite code; the old one stops working. People already in the group stay in. */
@@ -111,6 +128,7 @@ export const routes = [
   ['DELETE', '/api/groups/:id/membership',   'user',   leaveGroup],
   // These act on the current campaign (the ?group= the page sent).
   ['PUT',    '/api/group',                   'dm',     renameGroup],
+  ['PUT',    '/api/group/rulesets',          'dm',     setRulesets],
   ['POST',   '/api/group/invite-code',       'dm',     newGroupCode],
   ['GET',    '/api/group/members',           'dm',     listMembers],
   ['PUT',    '/api/group/members/:id/role',  'dm',     setMemberRole],

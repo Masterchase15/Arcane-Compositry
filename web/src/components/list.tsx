@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { NativeSelect, Options } from '@/components/fields';
 import { Input } from '@/components/ui/input';
-import { useApi } from '@/lib/catalog';
+import { useApi, useScope } from '@/lib/catalog';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { useSession } from '@/lib/session';
 import { errorMessage, type CharacterSummary } from '@/lib/api';
 import { TabBar } from '@/components/tab-bar';
@@ -66,7 +67,10 @@ export function ListRow({ badge, badgeSub, title, meta, right, onClick }: {
   );
 }
 
+/** The spell list tabs. Compositry spells and Components are Arcane Compositry, so they need that ruleset. */
 export function SpellListTabs({ current }: { current: 'codified' | 'compositry' | 'components' }) {
+  const { uses } = useScope();
+  if (!uses(ARCANE) && current === 'codified') return null;
   const tabs = [['codified', 'Codified (D&D)', '/spells/codified'], ['compositry', 'Compositry (custom)', '/spells/compositry'], ['components', 'Physical & Aspectual', '/spells/components']] as const;
   return (
     <TabBar className="mt-6" label="Spell lists" current={current} items={tabs.map(([id, label, to]) => ({ id, label, to }))} />

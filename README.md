@@ -4,11 +4,14 @@ Everything a Dungeons & Dragons campaign needs, for players and DMs:
 
 - **Players:** saved character sheets that do the maths, the campaign's party
   and homebrew, and searchable spells, items and classes.
-- **DMs:** campaigns with invite codes, homebrew without code (hidden until you
-  publish it), an initiative tracker, an NPC and enemy roster, and private
-  session notes and lore.
-- **Built-in magic:** the Arcane Compositry expansion - the full rules codex, a
-  Spellcrafter and a calculator for every formula.
+- **DMs:** campaigns with invite codes, a choice of rulesets, homebrew without
+  code (hidden until you publish it), an initiative tracker, an NPC and enemy
+  roster, and private session notes and lore.
+- **Rulesets:** D&D 5th Edition (the SRD 5.2), and the Arcane Compositry
+  expansion - a magic system with its full rules codex, a Spellcrafter and a
+  calculator for every formula. Xanathar's Guide to Everything and Arcana
+  Unleashed can be switched on too - a DM adds the options their table uses as
+  homebrew, filed under that expansion. Each campaign picks the ones it plays with.
 
 Several campaigns can share one site. Works on desktop and phones and can be
 installed as a web app.
@@ -48,11 +51,14 @@ then on the server run `npm run make-admin <your username>`. Run
 `npm run make-admin` with nothing after it to list the current admins.
 
 **Campaigns.** Everything on the site works without one. To run a game, open
-**Campaigns**, start a campaign - you become its DM - and give your players its
-invite code (inside the campaign, Group tab). Several campaigns can share the
-site, each with its own party, notes and homebrew. Inside a campaign a gold
-banner shows under the top bar; the spell, item and class lists have a
-**Homebrew** filter to include a campaign's homebrew while browsing. When the site is online, set `INVITE_CODE` so only people with an
+**Campaigns**, start a campaign - you become its DM - pick its **rulesets**
+(5e is always on; switch Arcane Compositry off to play plain 5e with spell
+slots), and give your players its invite code (inside the campaign, Group tab,
+where you can also change the rulesets). Several campaigns can share the site,
+each with its own rulesets, party, notes and homebrew - what the DM adds is
+marked **Homebrew**. Inside a campaign a gold banner shows under the top bar;
+the spell, item and class lists have a **Rulesets** filter to switch rulesets
+or use a campaign's rules and homebrew while browsing. When the site is online, set `INVITE_CODE` so only people with an
 invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 
 ## What is where
@@ -70,6 +76,7 @@ invite code can sign up (see [docs/DEPLOYING.md](docs/DEPLOYING.md)).
 | Hide something from players, or publish it  | Your campaign (as DM): the **Hide / Publish** button on any row - [docs/ADDING_SPELLS.md](docs/ADDING_SPELLS.md#hidden-or-public) |
 | Add or edit an item, weapon or class        | Your campaign (as DM), or `data/items.js` / `data/classes.js` - [docs/ADDING_ITEMS_AND_CLASSES.md](docs/ADDING_ITEMS_AND_CLASSES.md) |
 | Add a school, Form or item category         | `shared/rules/constants.js`                        |
+| Add a ruleset (an expansion)                | `shared/rules/rulesets.js` - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#rulesets-and-homebrew) |
 | Add a field to the character sheet          | `shared/rules/character.js` + a tab in `web/src/components/sheet/` |
 | Add a calculator                            | `web/src/lib/calculators.js`                       |
 | Change colours or fonts                     | top of `web/src/index.css` (fonts: `web/index.html`) |
@@ -307,7 +314,7 @@ data/                the lists you can edit by hand
   subclasses.js          subclasses (each names its parent class)
   npcs.js                NPCs & enemies - DM only, never sent to players
   books/                 the Codex library: one .md file per rulebook + index.js listing them
-shared/rules/        the game rules: formulas, tables, codex text, sheet shape (server + browser)
+shared/rules/        the game rules: formulas, tables, codex text, sheet shape, rulesets (server + browser)
 web/                 the React front end (TypeScript, Tailwind, shadcn/ui)
   index.html
   public/            icons, app manifest, offline helper - copied as-is
@@ -350,6 +357,15 @@ everything up. Passwords are stored only as salted hashes.
 
 Arcane Compositry is an unofficial, fan-made expansion. Dungeons & Dragons is a
 trademark of Wizards of the Coast; this project is not affiliated with or
-endorsed by them. The example Codified spells and item statistics are drawn
-from the System Reference Document 5.2, used under CC-BY-4.0. Class and
-subclass entries are brief original summaries for table reference.
+endorsed by them. Class and subclass entries are brief original summaries for
+table reference.
+
+The D&D 5th Edition spells (`data/spells/codified.js`) and the weapons, armor
+and magic items marked `source: 'SRD 5.2'` (`data/items.js`) use game
+statistics from the System Reference Document 5.2; their descriptions are
+short summaries in our own words, not the SRD text.
+
+This work includes material from the System Reference Document 5.2 ("SRD 5.2")
+by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The
+SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International
+License, available at https://creativecommons.org/licenses/by/4.0/legalcode.

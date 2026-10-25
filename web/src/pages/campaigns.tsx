@@ -15,6 +15,8 @@ import { Empty, PageHead, RequireUser } from '@/components/page';
 import { Panel } from '@/components/panel';
 import { api, ApiError, errorMessage, type Group } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { RulesetPicker } from '@/components/rulesets-bar';
+import { DEFAULT_RULESETS } from '@shared/rules/rulesets.js';
 
 export default function Campaigns() {
   return <RequireUser what="see your campaigns"><CampaignList /></RequireUser>;
@@ -24,6 +26,7 @@ function CampaignList() {
   const { groups, refresh } = useSession();
   const confirm = useConfirm();
   const navigate = useNavigate();
+  const [rulesets, setRulesets] = useState<string[]>([...DEFAULT_RULESETS]);
 
   const enter = async (group: Group, message: string) => {
     await refresh();
@@ -69,14 +72,17 @@ function CampaignList() {
         <CodeForm title="Join a campaign" label="Invite code from your DM" button="Join" field="code" upper
           submit={async (code) => { const { group } = await api<{ group: Group }>('POST', '/groups/join', { code }, { group: null }); await enter(group, `You joined ${group.name}.`); }} />
         <CodeForm title="Start a campaign" label="Campaign name" button="Create" field="name" hint="You will be its DM, and get an invite code to give your players."
-          submit={async (name) => { const { group } = await api<{ group: Group }>('POST', '/groups', { name }, { group: null }); await enter(group, `${group.name} created. Its invite code is on the Group tab.`); }} />
+          submit={async (name) => { const { group } = await api<{ group: Group }>('POST', '/groups', { name, rulesets }, { group: null }); await enter(group, `${group.name} created. Its invite code is on the Group tab.`); }}>
+          <p className="mt-4 mb-2 text-sm font-semibold">Rulesets <span className="font-normal text-muted-foreground">(you can change these later on the Group tab)</span></p>
+          <RulesetPicker value={rulesets} onChange={setRulesets} />
+        </CodeForm>
       </div>
     </>
   );
 }
 
-function CodeForm({ title, label, button, field, hint, upper, submit }: {
-  title: string; label: string; button: string; field: string; hint?: string; upper?: boolean; submit: (value: string) => Promise<void>;
+function CodeForm({ title, label, button, field, hint, upper, submit, children }: {
+  title: string; label: string; button: string; field: string; hint?: string; upper?: boolean; submit: (value: string) => Promise<void>; children?: React.ReactNode;
 }) {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +103,7 @@ function CodeForm({ title, label, button, field, hint, upper, submit }: {
             <Button type="submit" disabled={busy}>{button}</Button>
           </div>
         </Field>
+        {children}
       </form>
     </Panel>
   );

@@ -18,7 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, NativeSelect, Options } from '@/components/fields';
 import { DetailDialog, SpellDetail } from '@/components/details';
-import { HomebrewBar } from '@/components/homebrew-bar';
+import { OriginBadge, RulesetOff, RulesetsBar } from '@/components/rulesets-bar';
+import { ARCANE } from '@shared/rules/rulesets.js';
 import { characterLabel, ListRow, matchesWords, ResultBar, SearchInput, SpellListTabs, useFilters, useMyCharacters } from '@/components/list';
 import { Empty, ErrorState, Loading, PageHead } from '@/components/page';
 import { useConfirm } from '@/components/confirm';
@@ -29,6 +30,7 @@ import { addSpellToCharacter } from '@/lib/spellbook';
 
 const LIST_INFO = {
   codified: { title: 'Codified Spells', kicker: 'Ancient codifications', blurb: 'Existing D&D spells are already-optimized magical formulas. They keep their normal statistics and replace spell slots with Mana.' },
+  dnd: { title: 'Spells', kicker: 'D&D 5th Edition', blurb: 'The spells of the core rules, with their levels, schools and class lists.' },
   compositry: { title: 'Compositry Spells', kicker: 'Invented at this table', blurb: 'Compositions that have been refined and codified during the campaign. The list grows as players make Arcane Discoveries.' },
 };
 const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 10 > 3 || Math.floor(n / 10) === 1 ? 0 : n % 10]}`;
@@ -37,8 +39,9 @@ const KEYS = ['q', 'class', 'school', 'level', 'char', 'spell'] as const;
 export default function Spells() {
   const listName = (useParams().list === 'compositry' ? 'compositry' : 'codified') as 'codified' | 'compositry';
   const isCodified = listName === 'codified';
-  const info = LIST_INFO[listName];
-  const { group, isDM } = useScope();
+  const { group, isDM, uses } = useScope();
+  const arcane = uses(ARCANE);
+  const info = LIST_INFO[isCodified && !arcane ? 'dnd' : listName];
   const { data, error, reload } = useSpells();
   const { characters } = useMyCharacters();
   const { values: f, set } = useFilters(KEYS);
@@ -63,7 +66,8 @@ export default function Spells() {
         {info.blurb}
         <div><SpellListTabs current={listName} /></div>
       </PageHead>
-      <HomebrewBar />
+      <RulesetsBar />
+      {!isCodified && !arcane ? <RulesetOff ruleset={ARCANE} what="Compositry spells" /> : <>
 
       <form role="search" onSubmit={(e) => e.preventDefault()} className="surface mb-5 grid gap-4 p-4 sm:p-5 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         <Field label="Search" htmlFor="q"><SearchInput id="q" value={f.q} onChange={(v) => set({ q: v })} placeholder="Name, effect or tag" /></Field>
@@ -108,9 +112,10 @@ export default function Spells() {
                     {allowed !== null && (allowed
                       ? <Badge className="bg-ok/15 text-ok" variant="outline">{char!.className} can learn</Badge>
                       : <Badge variant="outline">Not on {char!.className || 'class'} list</Badge>)}
+                    <OriginBadge entry={s} />
                     {s.hidden && <Badge variant="outline" className="ml-1 border-gold-line bg-gold-soft text-gold-ink">Hidden</Badge>}
                   </>}
-                  right={`${isCodified ? codifiedSpellMana(s.level) : s.mana} Mana`}
+                  right={arcane ? `${isCodified ? codifiedSpellMana(s.level) : s.mana} Mana` : undefined}
                 />
               );
             })}
@@ -119,6 +124,7 @@ export default function Spells() {
       </>}
 
       {open && <SpellDialog list={listName} spell={open} characters={characters} defaultChar={char?.id} onClose={() => set({ spell: '' })} />}
+      </>}
     </>
   );
 }

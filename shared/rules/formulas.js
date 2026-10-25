@@ -322,6 +322,31 @@ export function npcPotency(d6, maxPotency, aggressive = false) {
   return options[category];
 }
 
+// ══════════════════ D&D 5e SPELL SLOTS (no Arcane Compositry) ═════════════════
+// Used by the character sheet in campaigns that play without Arcane Compositry.
+
+/** Spell slots of level 1-9 for a full caster at character level 1-20 (SRD 5.2). */
+export const FULL_CASTER_SLOTS = [
+  [2], [3], [4, 2], [4, 3], [4, 3, 2], [4, 3, 3], [4, 3, 3, 1], [4, 3, 3, 2], [4, 3, 3, 3, 1], [4, 3, 3, 3, 2],
+  [4, 3, 3, 3, 2, 1], [4, 3, 3, 3, 2, 1], [4, 3, 3, 3, 2, 1, 1], [4, 3, 3, 3, 2, 1, 1], [4, 3, 3, 3, 2, 1, 1, 1],
+  [4, 3, 3, 3, 2, 1, 1, 1], [4, 3, 3, 3, 2, 1, 1, 1, 1], [4, 3, 3, 3, 3, 1, 1, 1, 1], [4, 3, 3, 3, 3, 2, 1, 1, 1], [4, 3, 3, 3, 3, 2, 2, 1, 1],
+];
+
+/**
+ * Nine numbers: how many slots of each spell level. 'full' casters use the table
+ * above, 'partial' (half) casters the same table at half their level (rounded
+ * up), 'martial' classes have none. (A class's `caster` sets which.)
+ */
+export function spellSlots(level, casterType = 'full') {
+  const lvl = clamp(level, 1, 20);
+  const row = casterType === 'full' ? FULL_CASTER_SLOTS[lvl - 1] : casterType === 'partial' ? FULL_CASTER_SLOTS[Math.ceil(lvl / 2) - 1] : [];
+  return Array.from({ length: 9 }, (_, i) => row[i] ?? 0);
+}
+
+/** Spell save DC and spell attack bonus (the same maths as the Arcane ones). */
+export const spellSaveDC = (pb, abilityModifier) => 8 + num(pb) + num(abilityModifier);
+export const spellAttackBonus = (pb, abilityModifier) => num(pb) + num(abilityModifier);
+
 // ═════════════════════════════════ HELPERS ══════════════════════════════════
 
 /** Roll `count` dice with `sides` sides. Returns each die and the total. */
