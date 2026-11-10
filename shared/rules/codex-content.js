@@ -113,7 +113,7 @@ export const CHAPTERS = [
       </div>
       <div class="dark-box"><h3>Worked Example - Molten Stone Burst</h3>
         <p><b>Goal:</b> Geo + Fire, Potency III, 60-foot range, 20-foot burst, instantaneous, no added condition.</p>
-        <p><b>Math:</b> 5 Core + 1 Composite + 1 Range + 2 Area + 0 Duration + 0 Effect = <b>9 Mana</b>.</p></div>
+        <p><b>Math:</b> ${F.coreMana(3)} Core + 1 Composite + 1 Range + 2 Area + 0 Duration + 0 Effect = <b>${F.coreMana(3) + 4} Mana</b>.</p></div>
       <div data-calc="mana"></div>`,
   },
   {
@@ -141,10 +141,10 @@ export const CHAPTERS = [
   {
     id: 'damage', section: 'how', kicker: 'Damage', num: '04', title: 'Damage Formula: How Hard Does It Hit?', page: 7,
     html: `
-      <div class="formula">Damage Dice = P + 2 + floor(P / 3)</div>
-      <p><b>P</b> means Potency. <b>floor</b> means divide, then always round down.</p>
+      <div class="formula">Damage Dice = look up the Potency in the table</div>
+      <p>Each Potency gives a fixed pool of damage dice. The pool climbs steadily, then jumps sharply from Potency VI onward.</p>
       <div class="grid cols-2">
-        ${table(['^P', 'Calculation', '^Dice'], potencies.map((p) => [ROMAN[p], `${p} + 2 + floor(${p}/3)`, F.damageDice(p)]))}
+        ${table(['^Potency', '^Dice'], potencies.map((p) => [ROMAN[p], F.damageDice(p)]))}
         <div>
           <h3>Then choose the die by Form</h3>
           ${table(['Delivery', '^Die', 'Reason'], F.DELIVERIES.filter((d) => ['single', 'heavy', 'area', 'persistent'].includes(d.id)).map((d) => [d.label, `d${d.die}`, d.reason]))}
@@ -616,7 +616,7 @@ export const CHAPTERS = [
         <div>
           <h3>Weapon Infusions</h3>
           <p>Do not add a full spell's damage to every hit. Create an <b>Arcane Charge Pool</b>.</p>
-          <div class="formula">Charge Dice = Potency + 2 + floor(Potency / 3)</div>
+          <div class="formula">Charge Dice = Potency Damage Dice</div>
           <p>Weapon infusions normally use d6s. A Potency III infusion creates <b>6d6</b> of Charge.</p>
           <ul><li>On a hit, spend 1 Charge Die for bonus damage.</li><li>On a Chain Finisher, spend up to 2 Charge Dice.</li><li>Unused dice last only as long as the paid duration allows.</li></ul>
           <h3>Defensive Infusions</h3>

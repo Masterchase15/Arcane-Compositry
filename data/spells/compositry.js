@@ -23,7 +23,7 @@
  *      id: 'my-composition',          // unique, lowercase, dashes. Optional - made from the name if left out.
  *      name: 'My Composition',
  *      potency: 3,                    // 1-9 (Potency I-IX)
- *      mana: 9,                       // final Mana cost AFTER any codification discount
+ *      mana: 11,                      // final Mana cost AFTER any codification discount
  *      school: 'Evocation',           // the closest school of magic - used by the "type" filter
  *      classes: ['Any'],              // WHO MAY LEARN IT: ['Any'], or a list such as ['Druid', 'Wizard']
  *      physicals: ['Geo'],            // Physical Components  (may be empty: [])
@@ -51,7 +51,7 @@ export default [
     id: 'stone-shot',
     name: 'Stone Shot',
     potency: 1,
-    mana: 2,
+    mana: 3,
     school: 'Conjuration',
     classes: ['Any'],
     physicals: ['Geo'],
@@ -64,14 +64,14 @@ export default [
     effect: 'On a miss the stone may remain as cover (Seed).',
     description: `You conjure or tear loose a fist-sized stone and launch it at a target. The simplest Geo + Projectile Composition, and the first circuit most apprentices learn.
 
-Math: Potency I = 2 Core Mana, 3 damage dice. Single target, so d8s.`,
+Math: Potency I = 3 Core Mana, 3 damage dice. Single target, so d8s.`,
     tags: ['damage', 'starter'],
   },
   {
     id: 'ice-spear',
     name: 'Ice Spear',
     potency: 3,
-    mana: 6,
+    mana: 8,
     school: 'Evocation',
     classes: ['Druid', 'Ranger', 'Sorcerer', 'Wizard'],
     physicals: [],
@@ -84,7 +84,7 @@ Math: Potency I = 2 Core Mana, 3 damage dice. Single target, so d8s.`,
     effect: 'On a miss a slick patch forms where it lands.',
     description: `A lance of dense, razor-edged ice condenses along your forearm Tendrils and fires in a straight line.
 
-Math: 5 Core + 0 Composite + 1 Range (60 ft) = 6 Mana. Potency III gives 6 dice; a precise single-target attack uses d8s.
+Math: 7 Core + 0 Composite + 1 Range (60 ft) = 8 Mana. Potency III gives 6 dice; a precise single-target attack uses d8s.
 
 As an Arcane Attack Chain it can be split into three shards of 2d8 / 2d8 / 2d8.`,
     tags: ['damage', 'cold'],
@@ -93,7 +93,7 @@ As an Arcane Attack Chain it can be split into three shards of 2d8 / 2d8 / 2d8.`
     id: 'molten-stone-burst',
     name: 'Molten Stone Burst',
     potency: 3,
-    mana: 9,
+    mana: 11,
     school: 'Evocation',
     classes: ['Druid', 'Sorcerer', 'Wizard'],
     physicals: ['Geo'],
@@ -107,14 +107,14 @@ As an Arcane Attack Chain it can be split into three shards of 2d8 / 2d8 / 2d8.`
     effect: 'Leaves hot terrain or ignites fragile material (free minor consequence).',
     description: `You condense a mass of molten stone and detonate it at a point within range. This is the worked example from codex chapter 2.
 
-Math: 5 Core + 1 Composite + 1 Range + 2 Area + 0 Duration + 0 Effect = 9 Mana. Potency III gives 6 dice; an area effect uses d6s.`,
+Math: 7 Core + 1 Composite + 1 Range + 2 Area + 0 Duration + 0 Effect = 11 Mana. Potency III gives 6 dice; an area effect uses d6s.`,
     tags: ['damage', 'area', 'fire'],
   },
   {
     id: 'geo-armor',
     name: 'Geo Armor',
     potency: 2,
-    mana: 4,
+    mana: 5,
     school: 'Abjuration',
     classes: ['Any'],
     physicals: ['Geo'],
@@ -126,14 +126,14 @@ Math: 5 Core + 1 Composite + 1 Range + 2 Area + 0 Duration + 0 Effect = 9 Mana. 
     resolution: 'No roll',
     description: `Plates of conjured stone lock over your guard. Applied Thaumaturgy: instead of blanket resistance, the armor strengthens your active defense.
 
-Math: 3 Core + 1 Duration = 4 Mana. Potency II has 4 damage dice, so a legal Block reduces 4 more damage.`,
+Math: 4 Core + 1 Duration = 5 Mana. Potency II has 4 damage dice, so a legal Block reduces 4 more damage.`,
     tags: ['defense', 'applied thaumaturgy'],
   },
   {
     id: 'lightning-infusion',
     name: 'Lightning Infusion',
     potency: 3,
-    mana: 6,
+    mana: 8,
     school: 'Transmutation',
     classes: ['Barbarian', 'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue'],
     physicals: [],
@@ -147,14 +147,14 @@ Math: 3 Core + 1 Duration = 4 Mana. Potency II has 4 damage dice, so a legal Blo
 
 Each successful weapon hit may discharge 1d6. A completed Attack Chain Finisher may discharge 2d6. Unused dice fade when the duration ends.
 
-Math: 5 Core + 1 Duration = 6 Mana.`,
+Math: 7 Core + 1 Duration = 8 Mana.`,
     tags: ['applied thaumaturgy', 'weapon'],
   },
   {
     id: 'conductive-snare',
     name: 'Conductive Snare',
     potency: 2,
-    mana: 7,
+    mana: 8,
     school: 'Conjuration',
     classes: ['Druid', 'Sorcerer', 'Wizard'],
     physicals: ['Water'],
@@ -168,14 +168,14 @@ Math: 5 Core + 1 Duration = 6 Mana.`,
     effect: 'Minor: -10 speed while in the water. Electricity follows wet pathways.',
     description: `You flood a patch of ground and thread a current through it. Anything standing in the water when the circuit closes is caught.
 
-Math: 3 Core + 1 Composite + 1 Area + 1 Duration + 1 Effect = 7 Mana. Potency II gives 4 dice, minus Effect Rank 1 = 3 dice; persistent damage uses d4s.`,
+Math: 4 Core + 1 Composite + 1 Area + 1 Duration + 1 Effect = 8 Mana. Potency II gives 4 dice, minus Effect Rank 1 = 3 dice; persistent damage uses d4s.`,
     tags: ['control', 'area', 'trap'],
   },
   {
     id: 'glassfall',
     name: 'Glassfall',
     potency: 4,
-    mana: 9,
+    mana: 12,
     school: 'Transmutation',
     classes: ['Sorcerer', 'Wizard'],
     physicals: ['Sand'],
@@ -189,14 +189,14 @@ Math: 3 Core + 1 Composite + 1 Area + 1 Duration + 1 Effect = 7 Mana. Potency II
     effect: 'Leaves sharp, brittle terrain.',
     description: `Superheated sand fuses mid-air and rains down as glass. An Arcane Discovery: Sand + Fire becomes glass at sufficient power.
 
-Math: 6 Core + 1 Composite + 0 Range + 2 Area = 9 Mana. Potency IV gives 7 dice; area uses d6s.`,
+Math: 9 Core + 1 Composite + 0 Range + 2 Area = 12 Mana. Potency IV gives 7 dice; area uses d6s.`,
     tags: ['damage', 'area', 'discovery'],
   },
   {
     id: 'seraphines-shattered-sun',
     name: "Seraphine's Shattered Sun",
     potency: 5,
-    mana: 10,
+    mana: 13,
     school: 'Evocation',
     classes: ['Cleric', 'Sorcerer', 'Wizard'],
     physicals: ['Celestial'],
@@ -210,7 +210,7 @@ Math: 6 Core + 1 Composite + 0 Range + 2 Area = 9 Mana. Potency IV gives 7 dice;
     effect: 'Radiant fragments linger as bright light until the end of your next turn.',
     description: `Radiant fragments of heated Celestial material burst outward like a broken star. The technique did not exist until the character who created it refined it through research - now it carries her name.
 
-Math: 7 Core + 1 Composite + 1 Range + 2 Area = 11 Mana, minus 1 for the codification benefit = 10 Mana.`,
+Math: 10 Core + 1 Composite + 1 Range + 2 Area = 14 Mana, minus 1 for the codification benefit = 13 Mana.`,
     creator: 'Seraphine',
     optimization: 'Reduce Mana cost by 1',
     tags: ['damage', 'area', 'signature'],

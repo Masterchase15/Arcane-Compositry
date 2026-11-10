@@ -87,8 +87,8 @@ export default [
     chainLength: '2',
     invocation: 'int', maxPotency: 4, mana: '26', temperament: 'Disciplined',
     physicals: ['Geo', 'Water'], aspectuals: ['Ice'], forms: ['Projectile', 'Wall', 'Armor'],
-    signatures: `Ice Spear (Ice + Projectile, Potency III, 6 Mana, 6d8).
-Geo Armor (Geo + Armor, Potency II, 4 Mana, +4 Reinforcement).`,
+    signatures: `Ice Spear (Ice + Projectile, Potency III, 8 Mana, 6d8).
+Geo Armor (Geo + Armor, Potency II, 5 Mana, +4 Reinforcement).`,
     description: `A conservative academy mage: precise gestures, pale blue Tendrils along both forearms, and a habit of naming each Composition before releasing it. Disciplined temperament - improvises only on a 6.`,
     notes: `Example entry showing the Arcane Profile. Replace with your own NPCs.`,
     tags: ['example', 'caster'],

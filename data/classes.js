@@ -27,6 +27,7 @@
  *      tools: "Smith's tools",
  *      equipment: 'Starting equipment.',
  *      compositry: `How the class plays with Arcane Compositry.`,
+ *      spells: ['fire-bolt', 'ice-spear'],  // optional - spell ids this class may learn (adds it to those spells' classes)
  *      features: [                    // [level, 'Name', 'What it does']
  *        [1, 'Rune Carving', 'You can ...'],
  *        [2, 'Second Feature', '...'],

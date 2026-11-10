@@ -13,6 +13,13 @@
  *  sheet about half a second after the last change. Anything not yet saved is
  *  sent when you leave the page or close the tab.
  *  A character in a campaign uses that campaign's homebrew.
+ *
+ * LIVE HIT POINTS
+ *  The DM's Initiative Tracker changes a character's HP on the server. While a
+ *  sheet is open it checks for that every few seconds (useLiveHp) and shows the
+ *  new numbers. Each save also sends the HP the sheet last saw (`hpBase`), so the
+ *  server keeps a DM's hit that this sheet has not picked up yet instead of
+ *  overwriting it (server/routes/characters.js, mergeHp).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
@@ -35,6 +42,12 @@ import { api, errorMessage } from '@/lib/api';
 import { GroupScope, useApi, useScope } from '@/lib/catalog';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
+
+/** How often an open sheet checks for HP changed elsewhere (the DM's tracker). */
+const HP_POLL_MS = 3000;
+const HP_KEYS = ['current', 'max', 'temp'] as const;
+type Hp = Record<(typeof HP_KEYS)[number], number>;
+const hpOf = (c: any): Hp => ({ current: F.num(c?.hp?.current), max: F.num(c?.hp?.max), temp: F.num(c?.hp?.temp) });
 
 // With Arcane Compositry: the Arcane tab and its Reference cheat sheets. Without it (plain 5e): a Spells tab.
 const ARCANE_TABS = [
@@ -83,19 +96,64 @@ function Sheet({ loaded }: { loaded: Loaded }) {
   // ── Saving ────────────────────────────────────────────────────────────────
   const latest = useRef(c);
   const dirty = useRef(false);
+  const saving = useRef(false);
+  const hpBase = useRef<Hp>(hpOf(c)); // the HP last seen on the server
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  /** Puts HP numbers from the server onto the sheet (not a change of ours, so nothing is saved). */
+  const takeHp = useCallback((values: Partial<Hp>) => {
+    setC((prev: any) => {
+      const next = structuredClone(prev);
+      Object.assign(next.hp, values);
+      latest.current = next;
+      return next;
+    });
+  }, []);
+
   const flush = useCallback(async () => {
     clearTimeout(timer.current);
     if (!dirty.current) return;
     dirty.current = false;
+    saving.current = true;
+    const sent = latest.current;
     try {
-      await api('PUT', `/characters/${loaded.id}`, { data: latest.current });
+      const r = await api<{ hp: Hp }>('PUT', `/characters/${loaded.id}`, { data: sent, hpBase: hpBase.current });
+      // The server kept a newer HP from the DM for any number we had not changed: show it.
+      const sentHp = hpOf(sent);
+      const now = hpOf(latest.current);
+      const kept = Object.fromEntries(HP_KEYS.filter((k) => r.hp[k] !== sentHp[k] && now[k] === sentHp[k]).map((k) => [k, r.hp[k]]));
+      if (Object.keys(kept).length) takeHp(kept);
+      hpBase.current = r.hp;
       if (!dirty.current) setSave({ state: 'saved' });
     } catch (err) {
       dirty.current = true;
       setSave({ state: 'error', message: errorMessage(err) });
+    } finally {
+      saving.current = false;
     }
-  }, [loaded.id]);
+  }, [loaded.id, takeHp]);
+
+  // Live HP: pick up changes the DM makes in the Initiative Tracker.
+  useEffect(() => {
+    let alive = true;
+    const check = async () => {
+      if (document.hidden || saving.current) return;
+      try {
+        const { hp: remote } = await api<{ hp: Hp }>('GET', `/characters/${loaded.id}/hp`);
+        if (!alive || saving.current) return;
+        const local = hpOf(latest.current);
+        const changed = HP_KEYS.filter((k) => remote[k] !== hpBase.current[k]);
+        if (!changed.length) return;
+        // Take the server's number unless this sheet changed it too (then ours is saved over it).
+        const take = Object.fromEntries(changed.filter((k) => local[k] === hpBase.current[k]).map((k) => [k, remote[k]]));
+        hpBase.current = { ...hpBase.current, ...Object.fromEntries(changed.map((k) => [k, remote[k]])) };
+        if (Object.keys(take).length) takeHp(take);
+      } catch { /* offline or signed out: try again next time */ }
+    };
+    const timerId = setInterval(check, HP_POLL_MS);
+    document.addEventListener('visibilitychange', check);
+    return () => { alive = false; clearInterval(timerId); document.removeEventListener('visibilitychange', check); };
+  }, [loaded.id, takeHp]);
 
   const update = useCallback((fn: (c: any) => void) => {
     setC((prev: any) => {
@@ -114,7 +172,7 @@ function Sheet({ loaded }: { loaded: Loaded }) {
   useEffect(() => {
     const onUnload = () => {
       if (!dirty.current) return;
-      fetch(`/api/characters/${loaded.id}`, { method: 'PUT', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: latest.current }) });
+      fetch(`/api/characters/${loaded.id}`, { method: 'PUT', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: latest.current, hpBase: hpBase.current }) });
     };
     window.addEventListener('beforeunload', onUnload);
     return () => { window.removeEventListener('beforeunload', onUnload); void flush(); };

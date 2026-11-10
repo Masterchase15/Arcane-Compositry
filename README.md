@@ -107,7 +107,7 @@ follow.
 
 | What you see on the Spellcraft page        | Name in `formulas.js`          | What it looks like |
 | ------------------------------------------ | ------------------------------ | ------------------ |
-| Core Mana for each Potency (I-IX)          | `POTENCY`                      | `{ core: 5, meaning: 'Major encounter magic' }` - one line per Potency |
+| Core Mana and damage dice for each Potency (I-IX) | `POTENCY`               | `{ core: 7, dice: 6, meaning: 'Major encounter magic' }` - one line per Potency |
 | Cost of 2, 3, 4 Components                 | `compositeCost()`              | `if (n === 2) return 1;` |
 | Range options and their cost               | `RANGE_COSTS`                  | `{ id: '60', label: '60 ft', cost: 1 }` |
 | Area options and their cost                | `AREA_COSTS`                   | same shape |
@@ -115,7 +115,7 @@ follow.
 | "Remove Concentration (+2)"                | `REMOVE_CONCENTRATION_COST`    | `= 2` |
 | Effect ranks: Mana cost and dice traded away | `EFFECT_RANKS`               | `{ id: 'strong', label: 'Strong', examples: '...', cost: 2 }` |
 | Environmental discount (-1, minimum 1)     | inside `finalMana()`           | `{ label: 'Environmental discount', value: -1 }` and `Math.max(1, sum)` |
-| How many damage dice a Potency gives       | `damageDice()`                 | `p + 2 + Math.floor(p / 3)` |
+| How many damage dice a Potency gives       | `POTENCY` (`dice`)             | `dice: 6` on the Potency's line |
 | Which die each delivery rolls (d8/d10/d6/d4) | `DELIVERIES`                 | `{ id: 'area', label: 'Area effect', die: 6 }` |
 | Arcane attack bonus                        | `arcaneAttackBonus()`          | `pb + im` |
 | Save DC                                    | `arcaneSaveDC()`               | `8 + pb + im` |
@@ -163,11 +163,10 @@ Each one has a comment with its codex page number.
 
 It appears in the Spellcrafter and the Mana calculator dropdowns straight away.
 
-**Change the damage formula.** Edit the one line in `damageDice()`:
+**Change the damage dice.** Edit the `dice` number on that Potency's line in `POTENCY`:
 
 ```js
-return p + 2 + Math.floor(p / 3);   // before
-return p + 3 + Math.floor(p / 2);   // after: hits harder at every Potency
+{ core: 12, dice: 11, meaning: 'Exceptional magic' },   // Potency VI rolls 11 dice
 ```
 
 ### After changing a number, check three things

@@ -11,18 +11,21 @@
 
 // ═══════════════════════════════ TABLES ═════════════════════════════════════
 
-/** Potency I-IX -> Core Mana and what it means at the table (codex p.5). Index = Potency. */
+/**
+ * Potency I-IX -> Core Mana, damage dice and what it means at the table (codex p.5, p.7).
+ * Index = Potency. `dice` is the spell's damage-dice pool before the die size is chosen by Form.
+ */
 export const POTENCY = [
   null,
-  { core: 2,  meaning: 'Minor combat magic' },
-  { core: 3,  meaning: 'Reliable adventuring magic' },
-  { core: 5,  meaning: 'Major encounter magic' },
-  { core: 6,  meaning: 'High-impact magic' },
-  { core: 7,  meaning: 'Severe battlefield power' },
-  { core: 9,  meaning: 'Exceptional magic' },
-  { core: 10, meaning: 'Elite / legendary scale' },
-  { core: 11, meaning: 'World-shaping potential' },
-  { core: 13, meaning: 'Extreme reality alteration' },
+  { core: 3,  dice: 3,  meaning: 'Minor combat magic' },
+  { core: 4,  dice: 4,  meaning: 'Reliable adventuring magic' },
+  { core: 7,  dice: 6,  meaning: 'Major encounter magic' },
+  { core: 9,  dice: 7,  meaning: 'High-impact magic' },
+  { core: 10, dice: 8,  meaning: 'Severe battlefield power' },
+  { core: 12, dice: 11, meaning: 'Exceptional magic' },
+  { core: 13, dice: 12, meaning: 'Elite / legendary scale' },
+  { core: 14, dice: 13, meaning: 'World-shaping potential' },
+  { core: 16, dice: 15, meaning: 'Extreme reality alteration' },
 ];
 
 /** Codified (normal D&D) spell level -> Mana (codex p.9). Index = spell level, 0 = cantrip. */
@@ -147,11 +150,8 @@ export function finalMana({
   return { total: Math.max(1, sum), parts };
 }
 
-/** DAMAGE DICE = P + 2 + floor(P / 3)   (codex p.7) */
-export const damageDice = (potency) => {
-  const p = clamp(potency, 1, 9);
-  return p + 2 + Math.floor(p / 3);
-};
+/** DAMAGE DICE: look up the Potency in the table (codex p.7). */
+export const damageDice = (potency) => POTENCY[clamp(potency, 1, 9)].dice;
 
 /**
  * FINAL DAMAGE DICE = Normal Dice - Effect Rank   (codex p.7, "Conditions Trade Away Damage")
