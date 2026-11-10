@@ -13,6 +13,10 @@
  * (e.g. an SRD spell or subclass), so a DM only changes what differs - handy
  * for adding options from an expansion their table owns.
  *
+ * On the NPCs & Enemies tab, "Copy from Characters" does the same from a character
+ * sheet - one of the DM's own characters or a party member's - so a character can
+ * join the campaign as an NPC, ally or enemy (lib/npc-from-character.ts).
+ *
  * Every spell, Component, item and class is either PUBLIC (players see it) or
  * HIDDEN (only the campaign's DMs see it). The Hide / Publish button flips it,
  * for file entries too - so you can prepare things ahead and reveal them later.
@@ -21,10 +25,11 @@
  *  Add one line to that list's `fields` in CATALOG below, and make the server
  *  keep it (the matching validate function in server/catalog.js).
  *  Field types: text, number, select, textarea, bool (tick box),
- *               checks (several tick boxes), list (comma separated), lines.
+ *               checks (several tick boxes), list (comma separated), lines,
+ *               spells (searchable pick-list of every Codified and Compositry spell).
  */
 import { useState, type ReactNode } from 'react';
-import { BookOpen, Check, Copy, Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, Check, Copy, Eye, Pencil, Plus, Trash2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { SCHOOLS, CLASS_NAMES, ANY_CLASS, FORMS, ROMAN, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '@shared/rules/constants.js';
 import { codifiedSpellMana } from '@shared/rules/formulas.js';
@@ -39,8 +44,9 @@ import { DetailDialog, NpcDetail, Picker, SubclassDetail } from '@/components/de
 import { Field, NativeSelect, Options } from '@/components/fields';
 import { SearchInput, matchesWords } from '@/components/list';
 import { ErrorState, Loading } from '@/components/page';
-import { api, errorMessage } from '@/lib/api';
-import { invalidateLists, useCatalogList, useScope } from '@/lib/catalog';
+import { api, errorMessage, type CharacterSummary } from '@/lib/api';
+import { npcFromCharacter } from '@/lib/npc-from-character';
+import { invalidateLists, useApi, useCatalogList, useScope, useSpells } from '@/lib/catalog';
 import { ARCANE, BASE_RULESET, findRuleset } from '@shared/rules/rulesets.js';
 import { cn } from '@/lib/utils';
 
@@ -61,6 +67,12 @@ interface ListDef {
 
 // ── What the DM can edit: one entry per list ─────────────────────────────────
 const classChecks = () => [ANY_CLASS, ...CLASS_NAMES].map((c: any) => ({ value: c, label: c === ANY_CLASS ? 'Any class' : c }));
+/** The spell's own class list. Classes that picked it on their class form (classLinks) are added by the server, not stored here. */
+const SPELL_CLASSES = {
+  key: 'classes', label: 'Classes that may learn it', type: 'checks', required: true, options: [] as any[],
+  get: (e: any) => (e.classes || []).filter((c: string) => !(e.classLinks || []).includes(c)),
+  hint: 'A class can also pick this spell on its own form (Classes > Spells it can learn) - those classes are not ticked here.',
+};
 const abilityOptions = ABILITIES.map((a: any) => ({ value: a.key, label: a.name }));
 const VISIBILITY = {
   key: 'hidden', label: 'Visibility', type: 'select', value: false,
@@ -88,7 +100,7 @@ export const CATALOG: Record<string, ListDef> = {
       { key: 'name', label: 'Name', required: true, wide: true },
       { key: 'level', label: 'Level', type: 'select', value: 1, options: [...Array(10).keys()].map((n: any) => ({ value: n, label: n ? `Level ${n} (${codifiedSpellMana(n)} Mana)` : 'Cantrip (0 Mana)' })) },
       { key: 'school', label: 'School (type)', type: 'select', value: 'Evocation', options: SCHOOLS },
-      { key: 'classes', label: 'Classes that may learn it', type: 'checks', required: true, options: classChecks() },
+      { ...SPELL_CLASSES, options: classChecks() },
       { key: 'castingTime', label: 'Casting time', placeholder: 'Action' },
       { key: 'range', label: 'Range', placeholder: '60 feet' },
       { key: 'components', label: 'Components', placeholder: 'V, S, M (...)' },
@@ -108,7 +120,7 @@ export const CATALOG: Record<string, ListDef> = {
       { key: 'potency', label: 'Potency', type: 'select', value: 1, options: ROMAN.slice(1).map((r: any, i: any) => ({ value: i + 1, label: r })) },
       { key: 'mana', label: 'Final Mana', type: 'number', required: true, hint: 'After any codification discount. The Spellcrafter gives this number.' },
       { key: 'school', label: 'School (type)', type: 'select', value: 'Evocation', options: SCHOOLS },
-      { key: 'classes', label: 'Classes that may learn it', type: 'checks', required: true, options: classChecks() },
+      { ...SPELL_CLASSES, options: classChecks() },
       { key: 'physicals', label: 'Physical Components', type: 'list', hint: 'Separate with commas: Geo, Water' },
       { key: 'aspectuals', label: 'Aspectual Components', type: 'list', hint: 'Separate with commas: Fire' },
       { key: 'form', label: 'Form', suggestions: FORMS.map((f: any) => f.name) },
@@ -161,7 +173,7 @@ export const CATALOG: Record<string, ListDef> = {
   },
   classes: {
     noun: 'class', file: 'data/classes.js',
-    columns: [['Name', (s: any) => <b>{s.name}</b>], ['Hit Die', (s: any) => `d${s.hitDie}`], ['Invocation', (s: any) => s.invocation.toUpperCase()], ['Mana pool', (s: any) => s.caster], ['Subclasses', (s: any) => s.subclasses.length]],
+    columns: [['Name', (s: any) => <b>{s.name}</b>], ['Hit Die', (s: any) => `d${s.hitDie}`], ['Invocation', (s: any) => s.invocation.toUpperCase()], ['Mana pool', (s: any) => s.caster], ['Subclasses', (s: any) => s.subclasses.length], ['Spells picked', (s: any) => (s.spells || []).length]],
     fields: () => [
       { key: 'name', label: 'Name', required: true, wide: true },
       { key: 'hitDie', label: 'Hit Die', type: 'select', value: 8, options: [6, 8, 10, 12].map((n: any) => ({ value: n, label: `d${n}` })) },
@@ -179,6 +191,7 @@ export const CATALOG: Record<string, ListDef> = {
       { key: 'tools', label: 'Tool proficiencies' },
       { key: 'equipment', label: 'Starting equipment', wide: true },
       { arcane: true, key: 'compositry', label: 'In Arcane Compositry', type: 'textarea', hint: 'How the class plays with Mana, Attack Chains and Applied Thaumaturgy.' },
+      { key: 'spells', label: 'Spells it can learn', type: 'spells', hint: 'Tick every spell this class may learn. They appear when the Spells pages are filtered by this class, and count as "can learn" for its characters. Spells marked "any class" need no tick.' },
       { key: 'features', label: 'Class features', type: 'lines', toText: featureLines, hint: 'One per line:  Level | Feature name | What it does      e.g.  1 | Rune Carving | You can inscribe...' },
       { key: 'subclasses', label: 'Quick subclass list (optional)', type: 'lines', toText: subclassLines, hint: 'Better: add subclasses under Classes > Subclasses, where each feature gets its own description. This box is only a quick list - one per line:  Name | Description | 3 Feature; 6 Another feature' },
       ...SHARED_END,
@@ -265,6 +278,8 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
   const [picking, setPicking] = useState(false);
   const [template, setTemplate] = useState<any>(null); // a new entry starts as a copy of this one
   const [viewing, setViewing] = useState<any>(null);
+  const [pickingCharacter, setPickingCharacter] = useState(false);
+  const fromCharacters = listName === 'npcs';
   const canHide = !def.dmOnly; // a DM-only list has nothing to hide: players never get it
   if (error) return <ErrorState message={error} onRetry={reload} />;
   if (!entries) return <Loading />;
@@ -304,6 +319,7 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
         ) : <span />}
         <div className="flex flex-wrap gap-2">
           {entries.length > 0 && <Button variant="outline" onClick={() => setPicking(true)}><Copy />Copy from template</Button>}
+          {fromCharacters && <Button variant="outline" onClick={() => setPickingCharacter(true)}><UserRound />Copy from Characters</Button>}
           <Button onClick={() => { setTemplate(null); setEditing(null); }}><Plus />New {def.noun}</Button>
         </div>
       </div>
@@ -353,6 +369,9 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
       <Picker open={picking} onOpenChange={setPicking} title={`Copy from template: ${def.noun}`} emptyText="Nothing to copy yet."
         intro={`Pick an entry to start from. You get a new ${def.noun} with all its fields filled in - change what differs, choose its ruleset, and save. The original is not changed.`}
         entries={entries} describe={cellText} onPick={(e) => { setTemplate(e); setEditing(null); }} />
+      {fromCharacters && pickingCharacter && (
+        <CharacterPicker onClose={() => setPickingCharacter(false)} onPick={(npc) => { setTemplate(npc); setEditing(null); }} />
+      )}
       {editing !== undefined && <EntryForm listName={listName} entry={editing} template={editing ? null : template}
         onClose={() => { setEditing(undefined); setTemplate(null); }} />}
     </div>
@@ -366,7 +385,8 @@ export function CatalogTab({ listName, group, onPickList }: { listName: string; 
 function EntryForm({ listName, entry, template, onClose }: { listName: string; entry: any | null; template?: any; onClose: () => void }) {
   const def = CATALOG[listName];
   // What the boxes start with: the entry being edited, or a copy of the template (hidden until published).
-  const source = entry ?? (template ? { ...template, name: `${template.name} (copy)`, hidden: true } : null);
+  // A character copied in (Copy from Characters) keeps its own name.
+  const source = entry ?? (template ? (template.fromCharacter ? template : { ...template, name: `${template.name} (copy)`, hidden: true }) : null);
   const { uses, rulesets } = useScope();
   const arcane = uses(ARCANE);
   const fields = def.fields().filter((f) => arcane || !f.arcane);
@@ -381,7 +401,7 @@ function EntryForm({ listName, entry, template, onClose }: { listName: string; e
   }
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const current = (f: FormField) => (source && f.get ? f.get(source) : source?.[f.key]) ?? f.value ?? (f.type === 'checks' || f.type === 'list' ? [] : '');
+  const current = (f: FormField) => (source && f.get ? f.get(source) : source?.[f.key]) ?? f.value ?? (['checks', 'list', 'spells'].includes(f.type!) ? [] : '');
   const star = (f: FormField) => (f.required ? ' *' : '');
 
   const save = async (form: HTMLFormElement) => {
@@ -389,7 +409,7 @@ function EntryForm({ listName, entry, template, onClose }: { listName: string; e
     const data: Record<string, any> = {};
     for (const f of fields) {
       if (f.type === 'bool') data[f.key] = fd.has(f.key);
-      else if (f.type === 'checks') data[f.key] = fd.getAll(f.key);
+      else if (f.type === 'checks' || f.type === 'spells') data[f.key] = fd.getAll(f.key);
       else data[f.key] = fd.get(f.key);
     }
     setBusy(true); setError(null);
@@ -408,6 +428,7 @@ function EntryForm({ listName, entry, template, onClose }: { listName: string; e
   const control = (f: FormField) => {
     const id = `en-${f.key}`;
     const value = current(f);
+    if (f.type === 'spells') return <SpellPicker key={f.key} name={f.key} label={f.label} hint={f.hint} initial={value} />;
     if (f.type === 'checks') {
       return (
         <fieldset key={f.key} className="rounded-lg border p-3 sm:col-span-2">
@@ -453,9 +474,11 @@ function EntryForm({ listName, entry, template, onClose }: { listName: string; e
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">{entry ? `Edit ${entry.name}` : template ? `New ${def.noun} from ${template.name}` : `New ${def.noun}`}</DialogTitle>
+          <DialogTitle className="font-serif text-2xl">{entry ? `Edit ${entry.name}` : template ? `New ${def.noun} from ${template.fromCharacter ? 'character ' : ''}${template.name}` : `New ${def.noun}`}</DialogTitle>
           <DialogDescription>
-            {template && 'A copy - rename it and change what differs. '}Fields marked * are required.
+            {template && (template.fromCharacter
+              ? 'Filled in from the character sheet - set its Kind (NPC, Ally, Enemy, Boss), check the numbers and save. The character itself is not changed. '
+              : 'A copy - rename it and change what differs. ')}Fields marked * are required.
           </DialogDescription>
         </DialogHeader>
         <form id="entry-form" noValidate onSubmit={(e) => { e.preventDefault(); void save(e.currentTarget); }}>
@@ -477,5 +500,104 @@ function EntryForm({ listName, entry, template, onClose }: { listName: string; e
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The class form's "Spells it can learn": every Codified and Compositry spell in the
+ * campaign's rulesets, searchable and grouped by list, with a tick box each. The ticked
+ * spell ids are sent as hidden inputs, so FormData picks them up like any other field.
+ */
+function SpellPicker({ name, label, hint, initial }: { name: string; label: string; hint?: string; initial: string[] }) {
+  const { data, error } = useSpells();
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(initial));
+  const [q, setQ] = useState('');
+  const [onlyPicked, setOnlyPicked] = useState(false);
+  const toggle = (id: string, on: boolean) => setPicked((old) => { const next = new Set(old); if (on) next.add(id); else next.delete(id); return next; });
+  const setAll = (list: any[], on: boolean) => setPicked((old) => { const next = new Set(old); list.forEach((s) => (on ? next.add(s.id) : next.delete(s.id))); return next; });
+
+  const groups: [string, any[], (s: any) => string][] = data ? [
+    ['Codified spells', data.codified, (s) => (s.level ? `Level ${s.level}` : 'Cantrip')],
+    ['Compositry spells', data.compositry, (s) => `Potency ${ROMAN[s.potency]}`],
+  ] : [];
+  const visible = (s: any) => (!onlyPicked || picked.has(s.id)) && (!q || matchesWords(q, [s.name, s.school, ...s.classes, ...(s.physicals || []), ...(s.aspectuals || []), s.form].join(' ')));
+
+  return (
+    <fieldset className="rounded-lg border p-3 sm:col-span-2">
+      <legend className="px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">{label} <span className="normal-case">({picked.size} picked)</span></legend>
+      {[...picked].map((id) => <input key={id} type="hidden" name={name} value={id} />)}
+      {hint && <p className="mb-2 text-xs text-muted-foreground">{hint}</p>}
+      {error ? <p className="text-sm text-destructive">{error}</p> : !data ? <Loading /> : <>
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          {/* Enter in the search box must not submit the whole class form. */}
+          <div className="min-w-48 flex-1" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}><SearchInput value={q} onChange={setQ} placeholder="Search by name, school, class or Component" label="Search spells" /></div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={onlyPicked} onChange={(e) => setOnlyPicked(e.target.checked)} className="size-4 accent-primary" />Only show picked</label>
+        </div>
+        <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+          {groups.filter(([, list]) => list.length).map(([title, list, tag]) => {
+            const shown = list.filter(visible);
+            return (
+              <div key={title}>
+                <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 bg-background py-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title} ({shown.length})</h4>
+                  {shown.length > 0 && (
+                    <div className="flex gap-1">
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setAll(shown, true)}>Tick shown</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setAll(shown, false)}>Untick shown</Button>
+                    </div>
+                  )}
+                </div>
+                {shown.length === 0 ? <p className="text-sm text-muted-foreground">No matches.</p> : (
+                  <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                    {shown.map((s) => (
+                      <label key={s.id} className="flex min-w-0 items-center gap-2 text-sm">
+                        <input type="checkbox" checked={picked.has(s.id)} onChange={(e) => toggle(s.id, e.target.checked)} className="size-4 shrink-0 accent-primary" />
+                        <span className="truncate">{s.name}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{tag(s)}{s.classes.includes(ANY_CLASS) ? ' - any class' : ''}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </>}
+    </fieldset>
+  );
+}
+
+/**
+ * "Copy from Characters": the DM's own characters plus the party's characters in this
+ * campaign. Picking one loads its full sheet and hands back an NPC entry built from it.
+ */
+function CharacterPicker({ onClose, onPick }: { onClose: () => void; onPick: (npc: any) => void }) {
+  const mine = useApi<{ characters: CharacterSummary[] }>('/characters');
+  const party = useApi<{ characters: CharacterSummary[] }>('/group/characters');
+  const [busy, setBusy] = useState(false);
+  if (mine.error) { toast.error(mine.error); onClose(); return null; }
+  if (!mine.data) return null;
+  // Party characters that are the DM's own already appear in "mine".
+  const all = [...mine.data.characters, ...(party.data?.characters ?? []).filter((p) => !mine.data!.characters.some((m) => m.id === p.id))];
+
+  const pick = async (c: CharacterSummary) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const full = await api<{ data: any }>('GET', `/characters/${encodeURIComponent(c.id)}`);
+      onPick({ ...npcFromCharacter(full.data), fromCharacter: true });
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const describe = (c: CharacterSummary) =>
+    [[c.species, c.className, c.subclass && `(${c.subclass})`].filter(Boolean).join(' '), `level ${c.level}`, `by ${c.ownerName}`, c.groupName && `in ${c.groupName}`].filter(Boolean).join(' - ');
+
+  return (
+    <Picker open onOpenChange={(o) => { if (!o) onClose(); }} title="Copy from Characters" emptyText="You have no characters yet, and none are in this campaign's party."
+      intro="Pick a character to bring into the campaign as an NPC, ally or enemy. You get a new NPC filled in from their sheet - stat block, attacks, spells and story. The character itself is not changed."
+      entries={all} describe={describe} onPick={(c) => { void pick(c); }} />
   );
 }

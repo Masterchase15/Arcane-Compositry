@@ -178,6 +178,9 @@ function validateClass(s, errors) {
     skills: str(s.skills, 400), weapons: str(s.weapons, 300), armor: str(s.armor, 300), tools: str(s.tools, 300), equipment: str(s.equipment, 600),
     compositry: str(s.compositry, 1500),
     features: parseFeatures(s.features), subclasses: parseSubclasses(s.subclasses),
+    // The spells this class may learn, by spell id (Codified or Compositry). Each named spell
+    // gets this class added to its `classes` when the lists are served - see withClassSpells().
+    spells: [...new Set(list(s.spells).map(slugify).filter(Boolean))].slice(0, 1000),
   };
 }
 
@@ -322,10 +325,29 @@ export async function getList(listName, { groupId = null, includeHidden = true, 
   }
   // The DM's hidden/public choice (if any) wins over what the entry itself says.
   const visibility = new Map(db.prepare('SELECT id, hidden FROM group_visibility WHERE group_id = ? AND list = ?').all(groupId, listName).map((r) => [r.id, !!r.hidden]));
-  const all = [...merged.values()].map((e) => ({ ...e, hidden: visibility.has(e.id) ? visibility.get(e.id) : !!e.hidden }));
+  let all = [...merged.values()].map((e) => ({ ...e, hidden: visibility.has(e.id) ? visibility.get(e.id) : !!e.hidden }));
+  if (listName === 'codified' || listName === 'compositry') all = await withClassSpells(all, groupId);
   return all
     .filter((e) => (includeHidden || !e.hidden) && (!rulesets || rulesets.includes(e.ruleset)))
     .sort(LIST_DEFS[listName].sort);
+}
+
+/**
+ * A class can name the spells it may learn (its `spells` list, picked on the DM's class
+ * form). Adds that class to each of those spells' `classes`, so the spell filters and the
+ * "can learn" checks see it. `classLinks` records which names came from a class, so the
+ * spell's own form can leave them out.
+ */
+async function withClassSpells(spells, groupId) {
+  const linked = new Map(); // spell id -> class names that picked it
+  for (const cls of await getList('classes', { groupId })) {
+    for (const id of cls.spells || []) linked.set(id, [...(linked.get(id) || []), cls.name]);
+  }
+  if (!linked.size) return spells;
+  return spells.map((sp) => {
+    const names = (linked.get(sp.id) || []).filter((n) => !sp.classes.includes(n));
+    return names.length ? { ...sp, classes: [...sp.classes, ...names], classLinks: names } : sp;
+  });
 }
 
 // DM-page entries for every list share one table; the `list` column says which list a row belongs to.

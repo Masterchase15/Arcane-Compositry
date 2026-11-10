@@ -96,3 +96,21 @@ test('a DM can switch on a library expansion and file homebrew under it', async 
   assert.equal(await has(), false, 'hidden while the expansion is off');
   assert.equal((await dm.post('/catalog/subclasses', { ...sub, name: 'Another' }, opts)).status, 400, 'and nothing new can be filed under it');
 });
+
+test('a homebrew class picks its own spells, and they list it in their classes', async () => {
+  const codified = (await dm.get('/spells', F())).body.codified;
+  const [a, b] = codified.filter((s) => !s.classes.includes('Any'));
+  const cls = { name: 'Runesmith', description: 'Carves magic.', hitDie: 8, saves: ['int', 'con'], invocation: 'int', caster: 'partial', spells: [a.id, b.id, 'ice-spear'] };
+  const saved = await dm.post('/catalog/classes', cls, F());
+  assert.equal(saved.status, 200, saved.body.error);
+  assert.deepEqual(saved.body.entry.spells, [a.id, b.id, 'ice-spear']);
+
+  const spells = (await dm.get('/spells', F())).body;
+  const has = (list, id) => spells[list].find((s) => s.id === id);
+  assert.ok(has('codified', a.id).classes.includes('Runesmith'));
+  assert.deepEqual(has('codified', a.id).classLinks, ['Runesmith']);
+  assert.ok(has('compositry', 'ice-spear').classes.includes('Runesmith'));
+  assert.ok(spells.codified.filter((s) => s.classes.includes('Runesmith')).length === 2);
+  // Other campaigns do not see this campaign's class picks.
+  assert.ok(!(await server.client().get('/spells')).body.codified.some((s) => s.classes.includes('Runesmith')));
+});
