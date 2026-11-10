@@ -59,7 +59,7 @@ export const CALCULATORS = [
   },
   {
     id: 'damage', group: 'Arcane', title: 'Damage dice',
-    formula: 'Damage Dice = P + 2 + floor(P / 3)   ·   Final Dice = Normal Dice - Effect Rank',
+    formula: 'Damage Dice = Potency table (III = 6, VI = 11, IX = 15)   ·   Final Dice = Normal Dice - Effect Rank',
     fields: [
       { key: 'potency', label: 'Potency', type: 'potency', value: 3 },
       { key: 'delivery', label: 'Delivery', type: 'select', value: 'single', options: F.DELIVERIES.filter((d) => d.die).map((d) => ({ value: d.id, label: `${d.label} (d${d.die})` })) },
@@ -70,8 +70,7 @@ export const CALCULATORS = [
       return {
         results: [{ label: 'Damage', value: d.text, note: `average ${d.average}` }],
         breakdown: [
-          { label: `Potency ${ROMAN[v.potency]}`, value: v.potency }, { label: 'Flat bonus', value: 2 },
-          { label: `floor(${v.potency} / 3)`, value: Math.floor(v.potency / 3) }, { label: 'Effect rank traded away', value: -(d.base - d.count) },
+          { label: `Potency ${ROMAN[v.potency]} dice`, value: d.base }, { label: 'Effect rank traded away', value: -(d.base - d.count) },
           { label: 'Final dice', value: d.count, total: true },
         ],
       };

@@ -307,7 +307,7 @@ function Crafter() {
                 ...r.mana.parts.map((p: any, i: number) => [p.label, `${i && p.value >= 0 ? '+' : ''}${p.value}`] as [string, string]),
               ]} total={['Final Mana', String(r.mana.total)]} />
               <Breakdown title="Damage dice" rows={[
-                [`Potency ${ROMAN[s.potency]}: ${s.potency} + 2 + floor(${s.potency}/3)`, String(r.dmg.base)],
+                [`Potency ${ROMAN[s.potency]} dice`, String(r.dmg.base)],
                 ...(r.dmg.base !== r.dmg.count ? [['Effect rank traded away', `-${r.dmg.base - r.dmg.count}`] as [string, string]] : []),
               ]} total={[F.DELIVERIES.find((d: any) => d.id === s.delivery).label, r.damageText]}
                 after={s.hits > 1 && r.dmg.die ? [`Split over ${s.hits} attacks`, r.split.map((n) => `${n}d${r.dmg.die}`).join(' / ')] : undefined} />
