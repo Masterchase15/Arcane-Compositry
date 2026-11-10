@@ -69,3 +69,31 @@ test('character data must be an object; deleting is owner-or-DM only', async () 
   assert.equal((await owner.del(`/characters/${id}`)).status, 200);
   assert.equal((await owner.get(`/characters/${id}`)).status, 404);
 });
+
+test('hit points are shared live between the sheet and the DM tracker', async () => {
+  const data = { identity: { name: 'Hurt', className: 'Fighter', level: 3 }, hp: { current: 30, max: 30, temp: 0 }, notes: 'a' };
+  const { id } = (await owner.post('/characters', { data, groupId: camp.id })).body;
+  const G = { group: camp.id };
+
+  // The DM lands a hit from the tracker: only HP changes.
+  const hit = await dm.put(`/characters/${id}/hp`, { current: 18, temp: 0 }, G);
+  assert.equal(hit.status, 200);
+  assert.deepEqual(hit.body.hp, { current: 18, max: 30, temp: 0 });
+  assert.equal((await owner.get(`/characters/${id}/hp`)).body.hp.current, 18, 'the open sheet sees it');
+  assert.equal((await owner.get(`/characters/${id}`)).body.data.notes, 'a', 'the rest of the sheet is untouched');
+  assert.equal((await stranger.put(`/characters/${id}/hp`, { current: 1 })).status, 404);
+  assert.equal((await dm.put(`/characters/${id}/hp`, { current: -4 }, G)).status, 400);
+
+  // The player saves another field with a sheet that still shows 30 HP: the DM's hit is kept.
+  const stale = { ...data, notes: 'b' };
+  const saved = await owner.put(`/characters/${id}`, { data: stale, hpBase: { current: 30, max: 30, temp: 0 } });
+  assert.equal(saved.body.hp.current, 18);
+  // The player heals themselves: their own change wins.
+  const healed = await owner.put(`/characters/${id}`, { data: { ...stale, hp: { current: 25, max: 30, temp: 0 } }, hpBase: { current: 18, max: 30, temp: 0 } });
+  assert.equal(healed.body.hp.current, 25);
+
+  // The tracker reads every party character's HP at once (DM only).
+  const party = (await dm.get('/group/characters/hp', G)).body.characters;
+  assert.deepEqual(party.find((c) => c.id === id).hp, { current: 25, max: 30, temp: 0 });
+  assert.equal((await owner.get('/group/characters/hp', G)).status, 403);
+});

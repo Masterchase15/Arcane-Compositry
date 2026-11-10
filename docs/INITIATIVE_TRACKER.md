@@ -19,7 +19,7 @@ characters themselves are not touched.
 | Button                  | Where it comes from                                         |
 | ----------------------- | ----------------------------------------------------------- |
 | **Add enemy / NPC**     | Your NPCs & Enemies list. Asks how many, and can roll their initiative as it adds them. Copies of the same creature are numbered ("Bramble Wolf 2"). |
-| **Add player character**| Every character at the table. Copies their current HP, Temp HP, AC (including items in use), Guard and Mana from their sheet. |
+| **Add player character**| Every character at the table. Links their HP, Max HP and Temp HP to their sheet, and copies their AC (including items in use), Guard and Mana. |
 | **Add custom**          | A blank combatant for anything not on a list. Rename it in Details. |
 
 What is carried over for an NPC: Hit Points and AC (the first number in each
@@ -72,8 +72,12 @@ current numbers in again, and a link to open their full sheet.
 
 ## Good to know
 
-- The tracker keeps **its own copy** of the numbers. Changing a player's HP
-  here does not change their sheet, and a player changing their sheet does not
-  change the tracker until you press **Refresh from sheet**.
+- A player character's **hit points are linked to their sheet, both ways**.
+  Hit, Heal, Dead, Revive or typing in HP, Max HP or Temp HP changes their
+  sheet straight away; when the player changes their HP on their sheet, the
+  tracker shows it within a few seconds (it checks while the tab is open).
+  If both sides change the same number at once, the most recent change wins.
+- Everything else (Guard, Mana, AC, initiative, conditions) is the tracker's
+  **own copy**. Press **Refresh from sheet** to pull those in again.
 - An enemy's stat block is copied when it is added, so Details still works if
   you later edit or delete that NPC. Add it again to pick up the edit.

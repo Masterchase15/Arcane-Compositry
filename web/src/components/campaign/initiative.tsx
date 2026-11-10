@@ -17,9 +17,12 @@
  *   `snapshot` is a copy of an NPC's stat block taken when it was added, so the
  *   Details pop-up works even if the NPC is edited or deleted later.
  *
- * The numbers on a combatant are the tracker's OWN copy. Changing a player
- * character's HP here does not change their sheet (use "Refresh from sheet" to
- * pull their current numbers in).
+ * The numbers on a combatant are the tracker's OWN copy - except a player
+ * character's HIT POINTS (HP, Max HP, Temp HP), which stay in step with their
+ * sheet both ways: a change here is sent to the sheet straight away, and the
+ * tracker checks the party's HP every few seconds for changes made on the sheets
+ * (useLiveHp below; the server side is in server/routes/characters.js).
+ * Guard, Mana and the rest are still the tracker's own ("Refresh from sheet").
  *
  * ─── TO ADD SOMETHING TO TRACK ─────────────────────────────────────────────
  *  1. Give it a default in blankCombatant().
@@ -54,6 +57,13 @@ interface Combatant {
 }
 interface Data { round: number; firstId: string | null; combatants: Combatant[] }
 interface Encounter { id: string; name: string; data: Data; updatedAt: string }
+
+/** How often the tracker checks the party's sheets for HP changes. */
+const HP_POLL_MS = 3000;
+type Vitals = { hp: number; hpMax: number; tempHp: number };
+const vitalsOf = (c: Combatant): Vitals => ({ hp: F.num(c.hp), hpMax: F.num(c.hpMax), tempHp: F.num(c.tempHp) });
+const fromServerHp = (hp: { current: number; max: number; temp: number }): Vitals => ({ hp: hp.current, hpMax: hp.max, tempHp: hp.temp });
+const VITAL_KEYS = ['hp', 'hpMax', 'tempHp'] as const;
 
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
 /** The first whole number in a piece of text: "52 (8d8 + 16)" -> 52, "+2" -> 2. Blank when there is none. */
@@ -241,7 +251,80 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
     fn(next);
     setData(next);
     changed({ data: next });
+    queueHpPush();
   };
+
+  // ── Live HP for player characters (both ways) ──
+  // hpBase = the HP last seen on each character's sheet (by character id). A number that
+  // differs from it on a card was changed here and is sent to the sheet; a sheet number
+  // that differs from it was changed by the player and is shown here.
+  const hpBase = useRef<Record<string, Vitals>>(
+    Object.fromEntries(data.combatants.filter((c) => c.source === 'character').map((c) => [c.sourceId, vitalsOf(c)])),
+  );
+  const pushing = useRef(false);
+  const pushTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const pushHp = async () => {
+    clearTimeout(pushTimer.current);
+    if (pushing.current) { queueHpPush(); return; }
+    const pcs = latest.current.data.combatants.filter((c) => c.source === 'character');
+    const due = pcs.filter((c) => { const b = hpBase.current[c.sourceId]; const v = vitalsOf(c); return !b || VITAL_KEYS.some((k) => v[k] !== b[k]); });
+    if (!due.length) return;
+    pushing.current = true;
+    try {
+      for (const c of due) {
+        const v = vitalsOf(c);
+        const r = await api<{ hp: { current: number; max: number; temp: number } }>('PUT', `/characters/${c.sourceId}/hp`,
+          { current: v.hp, max: v.hpMax, temp: v.tempHp }, { group: groupId });
+        hpBase.current[c.sourceId] = fromServerHp(r.hp);
+      }
+    } catch (err) {
+      toast.error(`Could not update a character's sheet: ${errorMessage(err)}`);
+    } finally {
+      pushing.current = false;
+    }
+  };
+  function queueHpPush() { clearTimeout(pushTimer.current); pushTimer.current = setTimeout(pushHp, 300); }
+  useEffect(() => () => { void pushHp(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let alive = true;
+    const check = async () => {
+      if (document.hidden || pushing.current) return;
+      if (!latest.current.data.combatants.some((c) => c.source === 'character')) return;
+      try {
+        const { characters } = await api<{ characters: { id: string; hp: { current: number; max: number; temp: number } }[] }>('GET', '/group/characters/hp', undefined, { group: groupId });
+        if (!alive || pushing.current) return;
+        const take: Record<string, Partial<Vitals>> = {};
+        for (const c of latest.current.data.combatants.filter((x) => x.source === 'character')) {
+          const row = characters.find((ch) => ch.id === c.sourceId);
+          const base = hpBase.current[c.sourceId];
+          if (!row || !base) continue;
+          const remote = fromServerHp(row.hp);
+          const local = vitalsOf(c);
+          const changed = VITAL_KEYS.filter((k) => remote[k] !== base[k]);
+          if (!changed.length) continue;
+          // Take the sheet's number unless the DM changed it here too (then ours is sent over it).
+          const mine = changed.filter((k) => local[k] === base[k]);
+          if (mine.length) take[c.id] = Object.fromEntries(mine.map((k) => [k, remote[k]]));
+          hpBase.current[c.sourceId] = { ...base, ...Object.fromEntries(changed.map((k) => [k, remote[k]])) };
+        }
+        if (Object.keys(take).length) {
+          mutate((d) => {
+            for (const [id, v] of Object.entries(take)) {
+              const x = d.combatants.find((y) => y.id === id);
+              if (!x) continue;
+              if (v.hp !== undefined) x.hp = v.hp;
+              if (v.hpMax !== undefined) x.hpMax = v.hpMax;
+              if (v.tempHp !== undefined) x.tempHp = v.tempHp || '';
+            }
+          });
+        }
+      } catch { /* offline: try again next time */ }
+    };
+    const timerId = setInterval(check, HP_POLL_MS);
+    document.addEventListener('visibilitychange', check);
+    return () => { alive = false; clearInterval(timerId); document.removeEventListener('visibilitychange', check); };
+  }, [groupId]); // eslint-disable-line react-hooks/exhaustive-deps
   const find = (d: Data, id: string) => d.combatants.find((c) => c.id === id)!;
 
   const ordered = [...living(data), ...fallen(data)];
@@ -272,7 +355,7 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
       </div>
       <p className="text-sm text-muted-foreground">
         The combatant at the top is up. Press <b>Turn done</b> and they move to the bottom{arcane ? '; Guard refreshes for whoever is up next' : ''}.
-        Type an initiative yourself if you roll real dice. HP and other numbers here are the tracker's own copy.
+        Type an initiative yourself if you roll real dice. A player character's HP stays in step with their sheet both ways; other numbers here are the tracker's own copy.
       </p>
 
       {ordered.length === 0
@@ -304,13 +387,15 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
         describe={(n: any) => [n.kind, n.cr && `CR ${n.cr}`, n.ac && `AC ${n.ac}`, n.hp && `HP ${n.hp}`].filter(Boolean).join(' · ')}
         onPick={(n) => setCounting(n)} />
       <Picker open={picking === 'pc'} onOpenChange={(o) => { if (!o) setPicking(null); }} title="Add a player character"
-        intro="Every character in this campaign. Their current HP, AC, Guard and Mana are copied from their sheet."
+        intro="Every character in this campaign. Their AC, Guard and Mana are copied from their sheet; their HP stays linked to it."
         emptyText={party.data?.characters.length ? 'Every character is already in this encounter.' : 'No characters are in this campaign yet.'}
         entries={(party.data?.characters ?? []).filter((ch) => !data.combatants.some((c) => c.source === 'character' && c.sourceId === ch.id))}
         describe={(ch) => `Level ${ch.level} ${ch.className || 'Adventurer'} · played by ${ch.ownerName}`}
         onPick={async (ch) => {
           try {
             const sheet = upgrade((await api('GET', `/characters/${ch.id}`)).data);
+            const nums = sheetNumbers(sheet);
+            hpBase.current[ch.id] = vitalsOf(blankCombatant(nums));
             mutate((d) => add(d, blankCombatant({ source: 'character', sourceId: ch.id, kind: 'Player', ...sheetNumbers(sheet) })));
             toast.success(`${ch.name} added. Roll or type their initiative.`);
           } catch (err) { toast.error(errorMessage(err)); }
@@ -441,7 +526,7 @@ function CombatantDetails({ c, onClose, set, refresh }: {
     <DetailDialog open wide onOpenChange={(o) => { if (!o) onClose(); }} title={c.name} footer={<Button onClick={onClose}>Back to the tracker</Button>}>
       <div className="space-y-3 rounded-lg border bg-card p-4">
         <h4 className="font-sans text-sm font-bold uppercase tracking-wide text-gold-ink">In this encounter</h4>
-        <p className="text-sm text-muted-foreground">Change anything here to keep track during the fight. It is saved with the encounter{c.source === 'character' ? " and does not change the player's own sheet" : ''}.</p>
+        <p className="text-sm text-muted-foreground">Change anything here to keep track during the fight. It is saved with the encounter{c.source === 'character' ? ". HP, Max HP and Temp HP also change on the player's sheet; the other numbers do not" : ''}.</p>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {DETAIL_FIELDS.filter(([key]) => tracked(key)).map(([key, label, type = 'number']) => (
             <Field key={key} label={label} htmlFor={`d-${key}`} className={key === 'conditions' || key === 'name' ? 'col-span-2' : undefined}>

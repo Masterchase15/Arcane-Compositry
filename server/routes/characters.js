@@ -87,12 +87,63 @@ function getCharacter({ user, params }) {
   return { id: row.id, ownerId: row.user_id, ownerName: row.owner_name, groupId: row.group_id || null, groupName: row.group_name || '', updatedAt: row.updated_at, data: JSON.parse(row.data) };
 }
 
+// ── Hit points, shared live with the DM's Initiative Tracker ───────────────
+// The sheet and the tracker both change a character's HP. Each side remembers the
+// HP it last saw on the server (`hpBase`); when it saves, a number it did NOT change
+// keeps whatever the other side has stored since. So a player saving their sheet
+// never undoes a hit the DM just landed, and the other way round.
+const HP_KEYS = ['current', 'max', 'temp'];
+const hpNum = (v) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? 0 : Number(v));
+const hpOf = (data) => Object.fromEntries(HP_KEYS.map((k) => [k, hpNum(data?.hp?.[k])]));
+
+/** Three-way merge of the HP numbers: keeps `stored` for any number the caller left at `base`. */
+function mergeHp(storedData, incoming, base) {
+  const stored = hpOf(storedData);
+  const out = { ...(incoming || {}) };
+  for (const k of HP_KEYS) {
+    if (base && k in base && hpNum(out[k]) === hpNum(base[k]) && stored[k] !== hpNum(base[k])) out[k] = stored[k];
+  }
+  return out;
+}
+
 function updateCharacter({ user, params, body }) {
-  loadCharacter(user, params.id);
-  const { name, json } = cleanCharacterData(body.data);
+  const row = loadCharacter(user, params.id);
+  const { name } = cleanCharacterData(body.data);
+  const data = body.data;
+  if (body.hpBase && typeof body.hpBase === 'object') data.hp = mergeHp(JSON.parse(row.data), data.hp, body.hpBase);
   const updatedAt = new Date().toISOString();
-  db.prepare('UPDATE characters SET name = ?, data = ?, updated_at = ? WHERE id = ?').run(name, json, updatedAt, params.id);
-  return { ok: true, updatedAt };
+  db.prepare('UPDATE characters SET name = ?, data = ?, updated_at = ? WHERE id = ?').run(name, JSON.stringify(data), updatedAt, params.id);
+  return { ok: true, updatedAt, hp: hpOf(data) };
+}
+
+/** Just the hit points (the tracker's Hit / Heal and HP boxes). Owner or the campaign's DM. */
+function updateHp({ user, params, body }) {
+  const row = loadCharacter(user, params.id);
+  const data = JSON.parse(row.data);
+  const hp = data.hp && typeof data.hp === 'object' ? data.hp : (data.hp = {});
+  for (const k of HP_KEYS) {
+    if (body[k] === undefined || body[k] === '' || body[k] === null) continue;
+    const n = Math.round(Number(body[k]));
+    if (!Number.isFinite(n) || n < 0 || n > 100000) throw fail(400, `${k} must be a whole number, 0 or more.`);
+    hp[k] = n;
+  }
+  const updatedAt = new Date().toISOString();
+  db.prepare('UPDATE characters SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), updatedAt, params.id);
+  return { ok: true, updatedAt, hp: hpOf(data) };
+}
+
+/** A character's hit points, for the open sheet to check every few seconds. */
+function getHp({ user, params }) {
+  const row = loadCharacter(user, params.id);
+  return { hp: hpOf(JSON.parse(row.data)), updatedAt: row.updated_at };
+}
+
+/** Every party character's hit points, for the DM's Initiative Tracker to check every few seconds. */
+function listPartyHp({ group }) {
+  const rows = db
+    .prepare('SELECT c.id, c.data, c.updated_at FROM characters c WHERE c.group_id = ? AND c.user_id IN (SELECT user_id FROM memberships WHERE group_id = c.group_id)')
+    .all(group.id);
+  return { characters: rows.map((r) => ({ id: r.id, hp: hpOf(JSON.parse(r.data)), updatedAt: r.updated_at })) };
 }
 
 function deleteCharacter({ user, params }) {
@@ -104,9 +155,12 @@ function deleteCharacter({ user, params }) {
 export const routes = [
   ['GET',    '/api/characters',              'user',   listCharacters],
   ['GET',    '/api/group/characters',        'member', listPartyCharacters],
+  ['GET',    '/api/group/characters/hp',     'dm',     listPartyHp],
   ['POST',   '/api/characters',              'user',   createCharacter],
   ['PUT',    '/api/characters/:id/campaign', 'user',   setCharacterCampaign],
   ['GET',    '/api/characters/:id',          'user',   getCharacter],
   ['PUT',    '/api/characters/:id',          'user',   updateCharacter],
+  ['GET',    '/api/characters/:id/hp',       'user',   getHp],
+  ['PUT',    '/api/characters/:id/hp',       'user',   updateHp],
   ['DELETE', '/api/characters/:id',          'user',   deleteCharacter],
 ];
