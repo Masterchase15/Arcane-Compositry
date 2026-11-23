@@ -1,7 +1,7 @@
 /**
  * components/campaign/homebrew.tsx - a campaign DM's editors for spells, items,
- * classes, Components, subclasses and NPCs (the Spells, Items & Weapons,
- * Classes and NPCs tabs of the campaign hub, pages/campaign.tsx).
+ * classes, Components, subclasses, summons and NPCs (the Spells, Items & Weapons,
+ * Classes, Summons & Familiars and NPCs tabs of the campaign hub, pages/campaign.tsx).
  *
  * Entries saved here go to the database, for this campaign only: they are the
  * campaign's HOMEBREW. Entries from the data/ files are shown with their
@@ -27,11 +27,13 @@
  *  Field types: text, number, select, textarea, bool (tick box),
  *               checks (several tick boxes), list (comma separated), lines,
  *               spells (searchable pick-list of every Codified and Compositry spell).
+ *  `showIf: (v) => ...` shows a field only while other boxes have certain values
+ *  (v = the form's current values by key), e.g. the Dynamic companion fields.
  */
 import { useState, type ReactNode } from 'react';
 import { BookOpen, Check, Copy, Eye, Pencil, Plus, Trash2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
-import { SCHOOLS, CLASS_NAMES, ANY_CLASS, FORMS, ROMAN, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '@shared/rules/constants.js';
+import { SCHOOLS, CLASS_NAMES, ANY_CLASS, FORMS, ROMAN, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS, SUMMON_CATEGORIES } from '@shared/rules/constants.js';
 import { codifiedSpellMana } from '@shared/rules/formulas.js';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,7 +42,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useConfirm } from '@/components/confirm';
-import { DetailDialog, NpcDetail, Picker, SubclassDetail } from '@/components/details';
+import { DetailDialog, NpcDetail, Picker, SubclassDetail, SummonDetail } from '@/components/details';
 import { Field, NativeSelect, Options } from '@/components/fields';
 import { SearchInput, matchesWords } from '@/components/list';
 import { ErrorState, Loading } from '@/components/page';
@@ -57,6 +59,7 @@ interface FormField {
   key: string; label: string; type?: string; value?: any; options?: any[]; required?: boolean; wide?: boolean; tall?: boolean; short?: boolean;
   hint?: string; placeholder?: string; min?: number; suggestions?: string[]; toText?: (list: any[]) => string; get?: (e: any) => any;
   arcane?: boolean; // only shown when the campaign uses Arcane Compositry
+  showIf?: (v: Record<string, string>) => boolean; // only shown while this is true
 }
 interface ListDef {
   noun: string; file: string; dmOnly?: boolean;
@@ -91,6 +94,39 @@ const subclassLines = (list: any) => (list || []).map((s: any) => [s.name, s.tex
 
 const namedLines = (list: any) => (list || []).map((x: any) => `${x.name} | ${x.text}`).join('\n');
 const NAMED_HINT = 'One per line:  Name | What it does      e.g.  Multiattack | Makes two Spear attacks.';
+
+/** The 2024 stat block, shared by the NPC and summon forms (after their own identity fields). */
+/** Shows a summon field only for a Dynamic companion. */
+const DYNAMIC = (v: Record<string, string>) => v.category === 'Companion' && v.growth === 'dynamic';
+
+const STAT_BLOCK_FIELDS = (): FormField[] => [
+  { key: 'size', label: 'Size', type: 'select', value: 'Medium', options: ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan'] },
+  { key: 'creatureType', label: 'Creature type', placeholder: 'Humanoid', suggestions: ['Aberration', 'Beast', 'Celestial', 'Construct', 'Dragon', 'Elemental', 'Fey', 'Fiend', 'Giant', 'Humanoid', 'Monstrosity', 'Ooze', 'Plant', 'Undead'] },
+  { key: 'alignment', label: 'Alignment', placeholder: 'Neutral' },
+  { key: 'cr', label: 'Challenge Rating', placeholder: '3 (XP 700)' },
+  { key: 'pb', label: 'Proficiency Bonus', type: 'number', min: 2, value: 2, hint: 'Guard is worked out as 2 + PB.' },
+  { key: 'ac', label: 'Armor Class', placeholder: '16 (hide armor, shield)' },
+  { key: 'initiative', label: 'Initiative', placeholder: '+2' },
+  { key: 'hp', label: 'Hit Points', placeholder: '58 (9d8 + 18)' },
+  { key: 'speed', label: 'Speed', placeholder: '30 ft., Climb 30 ft.' },
+  ...ABILITIES.map((a: any) => ({ key: a.key, label: a.name, type: 'number', min: 1, value: 10, get: (e: any) => e.scores?.[a.key] })),
+  { key: 'saves', label: 'Saving throws', placeholder: 'Con +5, Wis +6' },
+  { key: 'skills', label: 'Skills', placeholder: 'Perception +6, Stealth +4' },
+  { key: 'vulnerabilities', label: 'Vulnerabilities' },
+  { key: 'resistances', label: 'Resistances' },
+  { key: 'immunities', label: 'Immunities', placeholder: 'Poison; Poisoned' },
+  { key: 'senses', label: 'Senses', placeholder: 'Darkvision 60 ft., Passive Perception 16' },
+  { key: 'languages', label: 'Languages' },
+  { key: 'gear', label: 'Gear', wide: true },
+  { key: 'traits', label: 'Traits', type: 'lines', toText: namedLines, hint: NAMED_HINT },
+  { key: 'actions', label: 'Actions', type: 'lines', toText: namedLines, hint: NAMED_HINT },
+  { key: 'bonusActions', label: 'Bonus actions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
+  { key: 'reactions', label: 'Reactions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
+  { key: 'legendary', label: 'Legendary actions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
+  { arcane: true, key: 'chainLength', label: 'Max Chain Length', placeholder: '3', hint: 'Baseline: 2 at CR 0-4, 3 at 5-10, 4 at 11-16, 5 at 17+.' },
+  { arcane: true, key: 'guard', label: 'Guard (blank = 2 + PB)' },
+  { arcane: true, key: 'momentum', label: 'Momentum Die / combat habits', wide: true, placeholder: 'Builds to d8, then spends on Topple.' },
+];
 
 export const CATALOG: Record<string, ListDef> = {
   codified: {
@@ -210,6 +246,31 @@ export const CATALOG: Record<string, ListDef> = {
       ...SHARED_END,
     ],
   },
+  summons: {
+    noun: 'summon', file: 'data/summons.js',
+    view: (s: any) => <SummonDetail s={s} />,
+    columns: [['Name', (s: any) => <b>{s.name}</b>], ['Category', (s: any) => (s.category === 'Companion' ? `Companion (${s.growth === 'dynamic' ? 'Dynamic' : 'Static'})` : s.category)], ['Summoned by', (s: any) => s.summonedBy.join(', ')], ['AC', (s: any) => s.ac], ['HP', (s: any) => s.hp]],
+    fields: () => [
+      { key: 'name', label: 'Name', required: true, wide: true },
+      { key: 'category', label: 'Category', type: 'select', value: 'Conjured Creature', options: SUMMON_CATEGORIES },
+      { key: 'summonedBy', label: 'Summoned by', type: 'list', placeholder: 'Summon Dragon, Find Familiar', hint: 'Spells or features that call it, separated by commas. Spell names link to the spell, and the spell links back here.' },
+      { key: 'growth', label: 'Companion type', type: 'select', value: 'static', showIf: (v) => v.category === 'Companion',
+        options: [{ value: 'static', label: 'Static - a standard stat block' }, { value: 'dynamic', label: 'Dynamic - gains levels and grows with its owner' }],
+        hint: 'Dynamic: the stat block below is its level 1, and it grows with the settings that appear below.' },
+      { key: 'hpPerLevel', label: 'HP gained per level', type: 'number', value: 0, showIf: DYNAMIC, hint: 'Added to its Hit Points for each level after 1st.' },
+      { key: 'acEvery', label: '+1 AC every ... levels', type: 'number', value: 0, showIf: DYNAMIC, hint: '0 = AC stays the same. 4 = +1 at levels 5, 9, 13 and 17.' },
+      { key: 'growAbilities', label: 'Ability scores that grow', type: 'checks', options: abilityOptions, showIf: DYNAMIC },
+      { key: 'abilityEvery', label: '+1 to those scores every ... levels', type: 'number', value: 0, showIf: DYNAMIC, hint: '0 = scores stay the same. 2 = +1 at levels 3, 5, 7...' },
+      { key: 'levelFeatures', label: 'Features gained by level', type: 'lines', short: true, toText: featureLines, showIf: DYNAMIC,
+        hint: 'One per line:  Level | Feature name | What it does      e.g.  5 | Extra Attack | It makes two Bite attacks. Its Proficiency Bonus follows its level automatically.' },
+      { key: 'spellLevel', label: 'Scales with spell level from', type: 'select', value: 0,
+        options: [{ value: 0, label: "Doesn't scale" }, ...[...Array(9).keys()].map((n) => ({ value: n + 1, label: `Level ${n + 1} and up` }))],
+        hint: "Pick the spell's lowest level if AC or HP say \"the spell's level\". Then AC / HP like  14 + the spell's level  or  50 + 10 for each spell level above 5  are worked out for the level it was cast at." },
+      ...STAT_BLOCK_FIELDS(),
+      { ...DESCRIPTION, label: 'How it is summoned', hint: 'What calls it, how it behaves and how it is commanded. Leave a blank line between paragraphs.' },
+      ...SHARED_END,
+    ],
+  },
   npcs: {
     noun: 'NPC / enemy', file: 'data/npcs.js', dmOnly: true,
     view: (s: any) => <NpcDetail n={s} />,
@@ -217,32 +278,7 @@ export const CATALOG: Record<string, ListDef> = {
     fields: () => [
       { key: 'name', label: 'Name', required: true, wide: true },
       { key: 'kind', label: 'Kind', type: 'select', value: 'Enemy', options: NPC_KINDS },
-      { key: 'size', label: 'Size', type: 'select', value: 'Medium', options: ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan'] },
-      { key: 'creatureType', label: 'Creature type', placeholder: 'Humanoid', suggestions: ['Aberration', 'Beast', 'Celestial', 'Construct', 'Dragon', 'Elemental', 'Fey', 'Fiend', 'Giant', 'Humanoid', 'Monstrosity', 'Ooze', 'Plant', 'Undead'] },
-      { key: 'alignment', label: 'Alignment', placeholder: 'Neutral' },
-      { key: 'cr', label: 'Challenge Rating', placeholder: '3 (XP 700)' },
-      { key: 'pb', label: 'Proficiency Bonus', type: 'number', min: 2, value: 2, hint: 'Guard is worked out as 2 + PB.' },
-      { key: 'ac', label: 'Armor Class', placeholder: '16 (hide armor, shield)' },
-      { key: 'initiative', label: 'Initiative', placeholder: '+2' },
-      { key: 'hp', label: 'Hit Points', placeholder: '58 (9d8 + 18)' },
-      { key: 'speed', label: 'Speed', placeholder: '30 ft., Climb 30 ft.' },
-      ...ABILITIES.map((a: any) => ({ key: a.key, label: a.name, type: 'number', min: 1, value: 10, get: (e: any) => e.scores?.[a.key] })),
-      { key: 'saves', label: 'Saving throws', placeholder: 'Con +5, Wis +6' },
-      { key: 'skills', label: 'Skills', placeholder: 'Perception +6, Stealth +4' },
-      { key: 'vulnerabilities', label: 'Vulnerabilities' },
-      { key: 'resistances', label: 'Resistances' },
-      { key: 'immunities', label: 'Immunities', placeholder: 'Poison; Poisoned' },
-      { key: 'senses', label: 'Senses', placeholder: 'Darkvision 60 ft., Passive Perception 16' },
-      { key: 'languages', label: 'Languages' },
-      { key: 'gear', label: 'Gear', wide: true },
-      { key: 'traits', label: 'Traits', type: 'lines', toText: namedLines, hint: NAMED_HINT },
-      { key: 'actions', label: 'Actions', type: 'lines', toText: namedLines, hint: NAMED_HINT },
-      { key: 'bonusActions', label: 'Bonus actions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
-      { key: 'reactions', label: 'Reactions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
-      { key: 'legendary', label: 'Legendary actions', type: 'lines', short: true, toText: namedLines, hint: NAMED_HINT },
-      { arcane: true, key: 'chainLength', label: 'Max Chain Length', placeholder: '3', hint: 'Baseline: 2 at CR 0-4, 3 at 5-10, 4 at 11-16, 5 at 17+.' },
-      { arcane: true, key: 'guard', label: 'Guard (blank = 2 + PB)' },
-      { arcane: true, key: 'momentum', label: 'Momentum Die / combat habits', wide: true, placeholder: 'Builds to d8, then spends on Topple.' },
+      ...STAT_BLOCK_FIELDS(),
       { key: 'invocation', label: 'Invocation ability (casters)', type: 'select', value: '', options: [{ value: '', label: 'None - not a Compositor' }, ...abilityOptions], hint: 'Arcane attack and Save DC are worked out from this and PB.' },
       { arcane: true, key: 'maxPotency', label: 'Maximum Potency', type: 'select', value: 0, options: [{ value: 0, label: 'None' }, ...ROMAN.slice(1).map((r: any, i: any) => ({ value: i + 1, label: r }))] },
       { arcane: true, key: 'mana', label: 'Mana', placeholder: '26' },
@@ -403,11 +439,14 @@ function EntryForm({ listName, entry, template, onClose }: { listName: string; e
   const [busy, setBusy] = useState(false);
   const current = (f: FormField) => (source && f.get ? f.get(source) : source?.[f.key]) ?? f.value ?? (['checks', 'list', 'spells'].includes(f.type!) ? [] : '');
   const star = (f: FormField) => (f.required ? ' *' : '');
+  // The boxes' current values, so `showIf` fields appear and disappear as the DM changes them.
+  const [watch, setWatch] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.key, String(current(f))])));
+  const shownFields = fields.filter((f) => !f.showIf || f.showIf(watch));
 
   const save = async (form: HTMLFormElement) => {
     const fd = new FormData(form);
     const data: Record<string, any> = {};
-    for (const f of fields) {
+    for (const f of shownFields) {
       if (f.type === 'bool') data[f.key] = fd.has(f.key);
       else if (f.type === 'checks' || f.type === 'spells') data[f.key] = fd.getAll(f.key);
       else data[f.key] = fd.get(f.key);
@@ -469,7 +508,7 @@ function EntryForm({ listName, entry, template, onClose }: { listName: string; e
   };
 
   // Tick boxes that sit next to each other are grouped onto one row.
-  const bools = fields.filter((f) => f.type === 'bool');
+  const bools = shownFields.filter((f) => f.type === 'bool');
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
@@ -481,9 +520,10 @@ function EntryForm({ listName, entry, template, onClose }: { listName: string; e
               : 'A copy - rename it and change what differs. ')}Fields marked * are required.
           </DialogDescription>
         </DialogHeader>
-        <form id="entry-form" noValidate onSubmit={(e) => { e.preventDefault(); void save(e.currentTarget); }}>
+        <form id="entry-form" noValidate onSubmit={(e) => { e.preventDefault(); void save(e.currentTarget); }}
+          onChange={(e) => { const t = e.target as unknown as HTMLInputElement; if (t.name && t.type !== 'checkbox') setWatch((w) => ({ ...w, [t.name]: t.value })); }}>
           {error && <p className="mb-3 rounded-md bg-destructive/10 px-3 py-2 font-semibold text-destructive" role="alert">{error}</p>}
-          <div className="grid gap-3 sm:grid-cols-2">{fields.filter((f) => f.type !== 'bool').map(control)}</div>
+          <div className="grid gap-3 sm:grid-cols-2">{shownFields.filter((f) => f.type !== 'bool').map(control)}</div>
           {bools.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-x-5">
               {bools.map((f) => (

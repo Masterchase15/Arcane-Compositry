@@ -1,5 +1,5 @@
 /**
- * server/routes/catalog.js - the spell, item, class, Component, subclass and NPC lists,
+ * server/routes/catalog.js - the spell, item, class, Component, subclass, NPC and summon lists,
  * and a campaign DM's edits to them (the merging itself is in server/catalog.js).
  *
  * Route lines: [METHOD, path, who may call it, handler] - see server/api.js.
@@ -67,9 +67,10 @@ export const routes = [
   ['GET',    '/api/classes',                 'public', async ({ group }) => ({ classes: await visibleTo(group, 'classes') })],
   ['GET',    '/api/components',              'public', async ({ group }) => ({ components: await visibleTo(group, 'components') })],
   ['GET',    '/api/subclasses',              'public', async ({ group }) => ({ subclasses: await visibleTo(group, 'subclasses') })],
+  ['GET',    '/api/summons',                 'public', async ({ group }) => ({ summons: await visibleTo(group, 'summons') })],
   // NPCs & enemies: the group's DMs only. There is no public route for this list.
   ['GET',    '/api/npcs',                    'dm',     async ({ group }) => ({ npcs: await getList('npcs', { groupId: group.id, rulesets: group.rulesets }) })],
-  // :list is one of: codified, compositry, components, items, classes, subclasses, npcs
+  // :list is one of: codified, compositry, components, items, classes, subclasses, npcs, summons
   ['PUT',    '/api/catalog/:list/:id/visibility', 'dm', setVisibility],
   ['POST',   '/api/catalog/:list',           'dm',     saveEntry],
   ['PUT',    '/api/catalog/:list/:id',       'dm',     saveEntry],

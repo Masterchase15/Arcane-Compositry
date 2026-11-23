@@ -38,6 +38,11 @@ export function blankCharacter() {
     weapons: [],
     // Items carried. Each: { id, itemId, name, category, qty, equipped, attunement, attuned, acBonus, saveBonus, notes }
     inventory: [],
+    // Summons, familiars and companions on the Core tab. Each: { id, summonId, name, category,
+    // castLevel, level, hp, hpMax, tempHp, notes, snapshot } - `snapshot` is a copy of its entry
+    // on the Summons & Familiars list; `castLevel` / `level` pick the numbers for spells that
+    // scale and for Dynamic companions (web/src/lib/summons.ts).
+    summons: [],
     arcane: { manaCurrent: 0, invocationAbility: 'int', maxPotency: 1 }, // invocationAbility = the spellcasting ability in plain 5e too
     // Plain 5e (campaigns without Arcane Compositry): spell slots spent, for spell levels 1-9.
     spellcasting: { slotsUsed: [0, 0, 0, 0, 0, 0, 0, 0, 0] },
@@ -93,6 +98,35 @@ export function characterFromBasics({ name, player, className, level, species, b
   c.arcane.manaCurrent = d.manaMax;
   c.arcane.maxPotency = Math.min(9, Math.max(1, Math.ceil(lvl / 2)));
   return c;
+}
+
+// ── Hit points shared live with the DM's Initiative Tracker ─────────────────
+// The character's own HP and each summon's HP, as one flat map:
+//   'hp.current' 'hp.max' 'hp.temp'   and   'summon.<row id>.hp' / '.hpMax' / '.tempHp'
+// The sheet and the tracker both change these; the server merges them three ways
+// (server/routes/characters.js), so neither side undoes the other's change.
+const vital = (v) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? 0 : Number(v));
+export const SUMMON_VITALS = ['hp', 'hpMax', 'tempHp'];
+export function vitalsOf(data) {
+  const out = { 'hp.current': vital(data?.hp?.current), 'hp.max': vital(data?.hp?.max), 'hp.temp': vital(data?.hp?.temp) };
+  for (const s of Array.isArray(data?.summons) ? data.summons : []) {
+    if (s && s.id) for (const f of SUMMON_VITALS) out[`summon.${s.id}.${f}`] = vital(s[f]);
+  }
+  return out;
+}
+/** Writes one number from vitalsOf() back onto a character. False when its summon is gone. */
+export function setVital(data, key, value) {
+  const [kind, a, b] = String(key).split('.');
+  if (kind === 'hp' && ['current', 'max', 'temp'].includes(a)) {
+    if (!data.hp || typeof data.hp !== 'object') data.hp = {};
+    data.hp[a] = value;
+    return true;
+  }
+  if (kind === 'summon' && SUMMON_VITALS.includes(b)) {
+    const row = (Array.isArray(data.summons) ? data.summons : []).find((s) => s && s.id === a);
+    if (row) { row[b] = value; return true; }
+  }
+  return false;
 }
 
 /** Names of every number derive() can calculate (used to build the override boxes). */

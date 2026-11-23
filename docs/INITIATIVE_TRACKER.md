@@ -19,6 +19,7 @@ characters themselves are not touched.
 | Button                  | Where it comes from                                         |
 | ----------------------- | ----------------------------------------------------------- |
 | **Add enemy / NPC**     | Your NPCs & Enemies list. Asks how many, and can roll their initiative as it adds them. Copies of the same creature are numbered ("Bramble Wolf 2"). |
+| **Add summon / familiar** | First, the summons on your players' sheets (Core & Combat > Summons & Familiars): picking one links its **HP to that sheet, both ways**, like a player character. Then the whole Summons & Familiars list: Asks how many, the spell level it was cast at (for summons that scale), who summoned it, and whether it **shares their Initiative**. Its AC and HP are worked out for that level (and a Dynamic companion's level). |
 | **Add player character**| Every character at the table. Links their HP, Max HP and Temp HP to their sheet, and copies their AC (including items in use), Guard and Mana. |
 | **Add custom**          | A blank combatant for anything not on a list. Rename it in Details. |
 
@@ -26,6 +27,16 @@ What is carried over for an NPC: Hit Points and AC (the first number in each
 box on its stat block), its initiative bonus (the Initiative box, or its
 Dexterity modifier if that is blank), Guard (2 + Proficiency Bonus unless you
 set one) and Mana.
+
+## Summons
+
+A summon added with **Shares their Initiative** ticked (the default for spell
+summons and steeds, which "take their turn immediately after yours") always has
+its summoner's initiative number and sits right after them in the order - also
+after **Roll initiative for all** and re-sorting. Familiars and undead servants
+roll their own initiative by default. Its name gets the summoner's name added
+("Draconic Spirit (Aria)"), and **Details** shows its stat block at the level it
+was cast.
 
 ## Initiative
 
@@ -77,6 +88,8 @@ current numbers in again, and a link to open their full sheet.
   sheet straight away; when the player changes their HP on their sheet, the
   tracker shows it within a few seconds (it checks while the tab is open).
   If both sides change the same number at once, the most recent change wins.
+- The same goes for a **summon added from a player's sheet**: a hit here shows
+  on their sheet, and healing it there shows here.
 - Everything else (Guard, Mana, AC, initiative, conditions) is the tracker's
   **own copy**. Press **Refresh from sheet** to pull those in again.
 - An enemy's stat block is copied when it is added, so Details still works if

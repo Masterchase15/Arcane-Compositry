@@ -84,7 +84,7 @@ These files stay plain JavaScript because the server uses them too. Each has a
 small generated `.d.ts` beside it so TypeScript treats its exports as untyped;
 after adding an export to one, run `npm run js-types`.
 
-Spells, Components, items, classes, subclasses and NPCs are **data**, not code.
+Spells, Components, items, classes, subclasses, summons and NPCs are **data**, not code.
 `server/catalog.js` loads each list from its file in `data/` and merges in a
 campaign's DM edits. The server only sends hidden entries to that campaign's
 DMs, and the NPC list (`/api/npcs`) to them only - it has no public route.
@@ -196,6 +196,12 @@ created); then that campaign's DMs can open and edit it, and the sheet uses the
 campaign's homebrew. Leaving or being removed from a campaign takes your
 characters out of it.
 
+A character's HP and the HP of the summons on its sheet are also changed by the
+DM's Initiative Tracker. Both sides send the numbers they last saw
+(`vitalsOf()` in `shared/rules/character.js`), and the server merges them three
+ways (`mergeVitals` in `server/routes/characters.js`), so neither undoes the
+other's change.
+
 ## DM notes and lore
 
 Session notes and lore entries are rows in the `dm_notes` table. Only the
@@ -273,7 +279,7 @@ The site has two modes, and the address decides which:
 - **Inside a campaign** - `/campaign/<id>` (`web/src/pages/campaign.tsx` and
   `components/campaign/`), with a gold campaign banner under the top bar. Tabs:
   Party (everyone), Rules & homebrew (players), and the DM tools (DMs only):
-  Initiative, Spells, Items, Classes, NPCs, Group (with the rulesets), Notes, Lore.
+  Initiative, Spells, Items, Classes, Summons & Familiars, NPCs, Group (with the rulesets), Notes, Lore.
 
 Every page sits inside `<GroupScope>` (`lib/catalog.tsx`), which decides the
 campaign and rulesets it uses - the hub's own, the character's (on the sheet), or

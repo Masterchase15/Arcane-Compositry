@@ -8,6 +8,7 @@
  *   classes      character classes              data/classes.js
  *   subclasses   subclasses (each names its parent class)   data/subclasses.js
  *   npcs         NPCs & enemies - DM ONLY, never sent to players   data/npcs.js
+ *   summons      summons & familiars (public stat blocks)   data/summons.js
  *
  * Every list works the same way. Entries come from two places:
  *   1. FILES    the data files above (edit by hand) - shared by every group
@@ -45,7 +46,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { db } from './db.js';
-import { SCHOOLS, ANY_CLASS, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS } from '../shared/rules/constants.js';
+import { SCHOOLS, ANY_CLASS, ABILITIES, ITEM_CATEGORIES, ITEM_RARITIES, COMPONENT_KINDS, NPC_KINDS, SUMMON_CATEGORIES } from '../shared/rules/constants.js';
 import { RULESET_IDS, BASE_RULESET, ARCANE } from '../shared/rules/rulesets.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -201,14 +202,10 @@ function parseNamed(v) {
     .filter((r) => r.name)
     .slice(0, 40);
 }
-function validateNpc(s, errors) {
-  const kind = oneOf(NPC_KINDS, s.kind || 'NPC');
-  if (!kind) errors.push(`kind must be one of: ${NPC_KINDS.join(', ')}`);
+/** The 2024 stat block fields shared by NPCs and summons. */
+function statBlock(s) {
   const scores = Object.fromEntries(ABILITY_KEYS.map((k) => [k, Math.min(30, Math.max(1, Math.round(Number(s[k] ?? s.scores?.[k])) || 10))]));
-  const invocation = str(s.invocation).toLowerCase();
   return {
-    ...common(s, errors), kind,
-    // 2024 stat block
     size: str(s.size, 40), creatureType: str(s.creatureType, 80), alignment: str(s.alignment, 40),
     ac: str(s.ac, 80), initiative: str(s.initiative, 40), hp: str(s.hp, 80), speed: str(s.speed, 120),
     scores, pb: Math.min(9, Math.max(2, Math.round(Number(s.pb)) || 2)),
@@ -219,6 +216,15 @@ function validateNpc(s, errors) {
     reactions: parseNamed(s.reactions), legendary: parseNamed(s.legendary),
     // Arcane Compositry combat
     guard: str(s.guard, 20), chainLength: str(s.chainLength, 20), momentum: str(s.momentum, 400),
+  };
+}
+function validateNpc(s, errors) {
+  const kind = oneOf(NPC_KINDS, s.kind || 'NPC');
+  if (!kind) errors.push(`kind must be one of: ${NPC_KINDS.join(', ')}`);
+  const invocation = str(s.invocation).toLowerCase();
+  return {
+    ...common(s, errors), kind,
+    ...statBlock(s),
     // Arcane Profile (codex p.18)
     invocation: ABILITY_KEYS.includes(invocation) ? invocation : '',
     maxPotency: Math.min(9, Math.max(0, Math.round(Number(s.maxPotency)) || 0)), mana: str(s.mana, 20),
@@ -226,6 +232,28 @@ function validateNpc(s, errors) {
     physicals: list(s.physicals), aspectuals: list(s.aspectuals), forms: list(s.forms), signatures: str(s.signatures, 2000),
     // Story
     location: str(s.location, 120), faction: str(s.faction, 120), notes: str(s.notes, 8000),
+  };
+}
+
+// ── Summons & familiars (public) ─────────────────────────────────────────────
+function validateSummon(s, errors) {
+  const category = oneOf(SUMMON_CATEGORIES, s.category || 'Other');
+  if (!category) errors.push(`category must be one of: ${SUMMON_CATEGORIES.join(', ')}`);
+  const level = Math.round(Number(s.spellLevel)) || 0;
+  if (level < 0 || level > 9) errors.push('spellLevel must be 0-9 (0 = the stat block does not change with the spell level)');
+  return {
+    ...common(s, errors), category,
+    summonedBy: list(s.summonedBy).map((x) => x.slice(0, 80)).slice(0, 12), // spells / features that call it
+    spellLevel: Math.min(9, Math.max(0, level)),                            // lowest level, when its numbers scale with the spell
+    ...statBlock(s),
+    // Companions only: 'static' (a fixed stat block) or 'dynamic' (gains levels; the stat block
+    // above is level 1). How a dynamic one grows - see summonStats() in web/src/lib/summons.ts.
+    growth: category === 'Companion' && str(s.growth).toLowerCase() === 'dynamic' ? 'dynamic' : 'static',
+    hpPerLevel: Math.min(200, Math.max(0, Math.round(Number(s.hpPerLevel)) || 0)),
+    acEvery: Math.min(20, Math.max(0, Math.round(Number(s.acEvery)) || 0)),
+    growAbilities: [...new Set(list(s.growAbilities).map((x) => x.toLowerCase()))].filter((x) => ABILITY_KEYS.includes(x)),
+    abilityEvery: Math.min(20, Math.max(0, Math.round(Number(s.abilityEvery)) || 0)),
+    levelFeatures: parseFeatures(s.levelFeatures),
   };
 }
 
@@ -240,6 +268,7 @@ const LIST_DEFS = {
   classes:    { file: 'data/classes.js',           ruleset: BASE_RULESET, sort: byName, validate: validateClass },
   subclasses: { file: 'data/subclasses.js',        ruleset: BASE_RULESET, sort: (a, b) => a.className.localeCompare(b.className) || byName(a, b), validate: validateSubclass },
   npcs:       { file: 'data/npcs.js',              ruleset: BASE_RULESET, sort: byName, validate: validateNpc, dmOnly: true },
+  summons:    { file: 'data/summons.js',           ruleset: BASE_RULESET, sort: byName, validate: validateSummon },
 };
 /** True for lists that players must never receive (the route that serves them is DM-only). */
 export const isDmOnly = (listName) => !!LIST_DEFS[listName]?.dmOnly;

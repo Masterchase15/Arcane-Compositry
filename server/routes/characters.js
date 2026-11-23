@@ -7,6 +7,7 @@
 import crypto from 'node:crypto';
 import { db } from '../db.js';
 import { fail } from '../http.js';
+import { vitalsOf, setVital, SUMMON_VITALS } from '../../shared/rules/character.js';
 
 // ── Characters ───────────────────────────────────────────────────────────────
 // A character belongs to its owner. It can also be in ONE campaign (group_id),
@@ -106,14 +107,28 @@ function mergeHp(storedData, incoming, base) {
   return out;
 }
 
+/**
+ * The same three-way merge for every live number (character HP and summons' HP, see
+ * vitalsOf in shared/rules/character.js): a number the caller left at `base` keeps what
+ * is stored now.
+ */
+function mergeVitals(storedData, data, base) {
+  const stored = vitalsOf(storedData);
+  const incoming = vitalsOf(data);
+  for (const [k, b] of Object.entries(base)) {
+    if (k in incoming && k in stored && incoming[k] === hpNum(b) && stored[k] !== hpNum(b)) setVital(data, k, stored[k]);
+  }
+}
+
 function updateCharacter({ user, params, body }) {
   const row = loadCharacter(user, params.id);
   const { name } = cleanCharacterData(body.data);
   const data = body.data;
-  if (body.hpBase && typeof body.hpBase === 'object') data.hp = mergeHp(JSON.parse(row.data), data.hp, body.hpBase);
+  if (body.vitalsBase && typeof body.vitalsBase === 'object') mergeVitals(JSON.parse(row.data), data, body.vitalsBase);
+  else if (body.hpBase && typeof body.hpBase === 'object') data.hp = mergeHp(JSON.parse(row.data), data.hp, body.hpBase);
   const updatedAt = new Date().toISOString();
   db.prepare('UPDATE characters SET name = ?, data = ?, updated_at = ? WHERE id = ?').run(name, JSON.stringify(data), updatedAt, params.id);
-  return { ok: true, updatedAt, hp: hpOf(data) };
+  return { ok: true, updatedAt, hp: hpOf(data), vitals: vitalsOf(data) };
 }
 
 /** Just the hit points (the tracker's Hit / Heal and HP boxes). Owner or the campaign's DM. */
@@ -129,13 +144,31 @@ function updateHp({ user, params, body }) {
   }
   const updatedAt = new Date().toISOString();
   db.prepare('UPDATE characters SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), updatedAt, params.id);
-  return { ok: true, updatedAt, hp: hpOf(data) };
+  return { ok: true, updatedAt, hp: hpOf(data), vitals: vitalsOf(data) };
 }
 
-/** A character's hit points, for the open sheet to check every few seconds. */
+/** One summon's hit points on a character's sheet (the tracker's Hit / Heal for a linked summon). */
+function updateSummonHp({ user, params, body }) {
+  const row = loadCharacter(user, params.id);
+  const data = JSON.parse(row.data);
+  const summon = (Array.isArray(data.summons) ? data.summons : []).find((s) => s && s.id === params.sid);
+  if (!summon) throw fail(404, 'That summon is no longer on the sheet.');
+  for (const k of SUMMON_VITALS) {
+    if (body[k] === undefined || body[k] === '' || body[k] === null) continue;
+    const n = Math.round(Number(body[k]));
+    if (!Number.isFinite(n) || n < 0 || n > 100000) throw fail(400, `${k} must be a whole number, 0 or more.`);
+    summon[k] = n;
+  }
+  const updatedAt = new Date().toISOString();
+  db.prepare('UPDATE characters SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), updatedAt, params.id);
+  return { ok: true, updatedAt, vitals: vitalsOf(data) };
+}
+
+/** A character's hit points (and its summons'), for the open sheet to check every few seconds. */
 function getHp({ user, params }) {
   const row = loadCharacter(user, params.id);
-  return { hp: hpOf(JSON.parse(row.data)), updatedAt: row.updated_at };
+  const data = JSON.parse(row.data);
+  return { hp: hpOf(data), vitals: vitalsOf(data), updatedAt: row.updated_at };
 }
 
 /** Every party character's hit points, for the DM's Initiative Tracker to check every few seconds. */
@@ -143,7 +176,14 @@ function listPartyHp({ group }) {
   const rows = db
     .prepare('SELECT c.id, c.data, c.updated_at FROM characters c WHERE c.group_id = ? AND c.user_id IN (SELECT user_id FROM memberships WHERE group_id = c.group_id)')
     .all(group.id);
-  return { characters: rows.map((r) => ({ id: r.id, hp: hpOf(JSON.parse(r.data)), updatedAt: r.updated_at })) };
+  return {
+    characters: rows.map((r) => {
+      const data = JSON.parse(r.data);
+      const summons = (Array.isArray(data.summons) ? data.summons : []).filter((s) => s && s.id)
+        .map((s) => ({ id: s.id, name: String(s.name || ''), summonId: String(s.summonId || ''), category: String(s.category || '') }));
+      return { id: r.id, hp: hpOf(data), vitals: vitalsOf(data), summons, updatedAt: r.updated_at };
+    }),
+  };
 }
 
 function deleteCharacter({ user, params }) {
@@ -162,5 +202,6 @@ export const routes = [
   ['PUT',    '/api/characters/:id',          'user',   updateCharacter],
   ['GET',    '/api/characters/:id/hp',       'user',   getHp],
   ['PUT',    '/api/characters/:id/hp',       'user',   updateHp],
+  ['PUT',    '/api/characters/:id/summons/:sid/hp', 'user', updateSummonHp],
   ['DELETE', '/api/characters/:id',          'user',   deleteCharacter],
 ];

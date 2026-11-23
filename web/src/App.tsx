@@ -31,6 +31,7 @@ const Tools = page(() => import('./pages/tools'));
 const Spells = page(() => import('./pages/spells'));
 const Components = page(() => import('./pages/components'));
 const Items = page(() => import('./pages/items'));
+const Summons = page(() => import('./pages/summons'));
 const Classes = page(() => import('./pages/classes'));
 const Characters = page(() => import('./pages/characters'));
 const NewCharacter = page(() => import('./pages/new-character'));
@@ -74,6 +75,7 @@ export function App() {
                 <Route path="spells/components" element={<Components />} />
                 <Route path="spells/:list?" element={<Spells />} />
                 <Route path="items" element={<Items />} />
+                <Route path="summons" element={<Summons />} />
                 <Route path="classes/:id?" element={<Classes />} />
                 <Route path="characters" element={<Characters />} />
                 <Route path="characters/new" element={<NewCharacter />} />

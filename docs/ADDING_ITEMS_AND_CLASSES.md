@@ -1,4 +1,4 @@
-# Adding items, weapons, classes, subclasses and NPCs
+# Adding items, weapons, classes, subclasses, summons and NPCs
 
 Items and classes work the same way spells do (see
 [ADDING_SPELLS.md](ADDING_SPELLS.md)): use your **campaign's DM tabs**, or edit a **data
@@ -9,6 +9,7 @@ file**. Both combine.
 | Items & Weapons   | Items & Weapons   | `data/items.js`   |
 | Classes           | Classes > Classes | `data/classes.js` |
 | Subclasses        | Classes > Subclasses | `data/subclasses.js` |
+| Summons & Familiars | Summons & Familiars | `data/summons.js` |
 | NPCs & Enemies    | NPCs & Enemies (DM only) | `data/npcs.js` |
 
 In your campaign's DM tabs, **Edit** works on any entry. Editing an entry that comes from a
@@ -145,6 +146,64 @@ as a suggestion in the Subclass box on character sheets of that class. Hide it
 to keep it secret until a player unlocks it.
 
 To move a subclass to a different parent, edit it and change **Parent class**.
+
+## Summons & Familiars
+
+The **Summons & Familiars** page (`/summons`) lists every creature a spell or
+feature can call up, with its full stat block - so when a spell says "uses the
+*Draconic Spirit* stat block", players can look it up. It is public, like Items.
+The SRD 5.2 entries ship in `data/summons.js`: the spell summons (Draconic
+Spirit, Giant Insect, Otherworldly Steed, Animated Object), the Find Familiar
+forms, the Pact of the Chain forms, Phantom Steed's Riding Horse, and the undead
+from Animate Dead and Create Undead.
+
+Your campaign (as DM) > **Summons & Familiars** > **New summon**. The form is the
+NPC stat block (below) plus:
+
+| Field | Used for |
+| ----- | -------- |
+| Category | Conjured Creature, Familiar, Special Familiar, Steed, Undead Servant, Animated Object, Companion, Other (`SUMMON_CATEGORIES` in `shared/rules/constants.js`) |
+| Summoned by | Spells or features that call it, comma separated. A name that matches a spell links to it, and that spell shows a link back to the stat block. |
+| Scales with spell level from | The spell's lowest level, when AC or HP mention "the spell's level". The page then has a **Cast at spell level** picker, and the Initiative Tracker asks for the level. |
+
+AC and HP like `14 + the spell's level`, `10 + 1 per spell level`,
+`5 + 10 per spell level` or `50 + 10 for each spell level above 5` are worked out
+for the chosen level (`scaleBySpellLevel()` in `shared/rules/formulas.js`).
+Hide / Publish works as for items.
+
+### Companions: Static or Dynamic
+
+Choosing the **Companion** category shows **Companion type**:
+
+- **Static** - a standard stat block, like every other category.
+- **Dynamic** - a permanent pet that gains levels with its owner. The stat block
+  you enter is its **level 1**, and these boxes appear:
+
+  | Field | At level L |
+  | ----- | ---------- |
+  | HP gained per level | Hit Points = level-1 HP + this x (L - 1) |
+  | +1 AC every ... levels | e.g. 4: +1 AC at levels 5, 9, 13, 17 |
+  | Ability scores that grow, +1 every ... levels | e.g. STR and DEX every 2: +1 each at 3, 5, 7... (max 30) |
+  | Features gained by level | `Level \| Name \| What it does`, one per line; each appears once it reaches that level |
+
+  Its Proficiency Bonus follows its level automatically. The numbers are worked
+  out in `web/src/lib/summons.ts` (`summonStats`), so the Summons & Familiars
+  page (with a **Companion level** picker), the character sheet and the
+  Initiative Tracker all agree.
+
+### On a character sheet
+
+Core & Combat > **Summons & Familiars** > **Add from Summons & Familiars**. A
+character can keep several at once. Each row shows its name (rename it - "Hoot
+the Owl"), HP with +/- buttons, Max HP, Temp HP, AC, Initiative, Speed, Passive
+Perception and PB / CR, plus **Details** (the full stat block), **Full HP** and
+**Remove**. A spell summon that scales has a **Cast at level** box; a Dynamic
+companion has a **Level** box (it starts at the character's level, with a
+button to match it again). Changing either recalculates Max HP, and current HP
+moves by the same amount.
+
+The row keeps a copy of the stat block, so a later DM edit does not change a
+summon already on a sheet - remove it and add it again to pick the edit up.
 
 ## NPCs & Enemies (DM only)
 
