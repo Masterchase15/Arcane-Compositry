@@ -11,17 +11,24 @@
  *   enc.data.round                 current round number
  *   enc.data.firstId               who acted first this round (when they come up again, the round ticks over)
  *   enc.data.combatants            everyone in the fight, IN TURN ORDER. The first living one is "up".
- *     { id, source: 'npc' | 'character' | 'custom', sourceId, name, kind,
+ *     { id, source: 'npc' | 'character' | 'summon' | 'custom', sourceId, name, kind,
  *       initiative, initBonus, hp, hpMax, tempHp, ac, guard, guardMax, mana, manaMax,
- *       conditions, notes, dead, snapshot }
- *   `snapshot` is a copy of an NPC's stat block taken when it was added, so the
- *   Details pop-up works even if the NPC is edited or deleted later.
+ *       conditions, notes, dead, snapshot, followId }
+ *   `snapshot` is a copy of an NPC's or summon's stat block taken when it was added, so the
+ *   Details pop-up works even if it is edited or deleted later. A summon's snapshot also
+ *   remembers the spell level it was cast at (`castLevel`).
+ *   `followId` (summons): the combatant whose Initiative it shares. It always gets their
+ *   number and takes its turn immediately after them, as spell summons do.
+ *   `linkChar` / `linkRow` (summons): a summon added from a player's sheet (their Summons &
+ *   Familiars panel). Its HP stays in step with that row on the sheet, both ways, like a
+ *   player character's own HP.
  *
  * The numbers on a combatant are the tracker's OWN copy - except a player
  * character's HIT POINTS (HP, Max HP, Temp HP), which stay in step with their
  * sheet both ways: a change here is sent to the sheet straight away, and the
  * tracker checks the party's HP every few seconds for changes made on the sheets
- * (useLiveHp below; the server side is in server/routes/characters.js).
+ * (useLiveHp below; the server side is in server/routes/characters.js). Summons linked
+ * to a sheet (linkChar / linkRow) work the same way.
  * Guard, Mana and the rest are still the tracker's own ("Refresh from sheet").
  *
  * ─── TO ADD SOMETHING TO TRACK ─────────────────────────────────────────────
@@ -30,7 +37,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { ArrowDown, ArrowUp, BookOpen, Check, Dices, Heart, Loader2, Plus, RefreshCw, Skull, Sword, Trash2, Users, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BookOpen, Check, Dices, Heart, Loader2, PawPrint, Plus, RefreshCw, Skull, Sword, Trash2, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import * as F from '@shared/rules/formulas.js';
 import { derive, upgrade } from '@shared/rules/character.js';
@@ -41,19 +48,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useConfirm } from '@/components/confirm';
-import { CharacterSummary, DetailDialog, NpcDetail, Picker } from '@/components/details';
-import { Field } from '@/components/fields';
+import { CharacterSummary, DetailDialog, NpcDetail, Picker, SummonDetail } from '@/components/details';
+import { isDynamic, summonStats } from '@/lib/summons';
+import { Field, NativeSelect } from '@/components/fields';
 import { Empty, ErrorState, Loading } from '@/components/page';
 import { api, errorMessage, type CharacterSummary as CharRow } from '@/lib/api';
-import { useApi, useNpcs, useScope } from '@/lib/catalog';
+import { useApi, useNpcs, useScope, useSummons } from '@/lib/catalog';
 import { ARCANE } from '@shared/rules/rulesets.js';
 import { cn } from '@/lib/utils';
 
 type Num = number | '';
 interface Combatant {
-  id: string; source: 'npc' | 'character' | 'custom'; sourceId: string; name: string; kind: string;
+  id: string; source: 'npc' | 'character' | 'summon' | 'custom'; sourceId: string; name: string; kind: string;
   initiative: Num; initBonus: number; hp: Num; hpMax: Num; tempHp: Num; ac: Num;
   guard: Num; guardMax: Num; mana: Num; manaMax: Num; conditions: string; notes: string; dead: boolean; snapshot: any;
+  followId: string; linkChar: string; linkRow: string;
 }
 interface Data { round: number; firstId: string | null; combatants: Combatant[] }
 interface Encounter { id: string; name: string; data: Data; updatedAt: string }
@@ -63,6 +72,15 @@ const HP_POLL_MS = 3000;
 type Vitals = { hp: number; hpMax: number; tempHp: number };
 const vitalsOf = (c: Combatant): Vitals => ({ hp: F.num(c.hp), hpMax: F.num(c.hpMax), tempHp: F.num(c.tempHp) });
 const fromServerHp = (hp: { current: number; max: number; temp: number }): Vitals => ({ hp: hp.current, hpMax: hp.max, tempHp: hp.temp });
+/** The sheet a combatant's HP is linked to: a character ('<id>'), a summon on one ('<id>:<row>'), or none (''). */
+const linkKey = (c: Combatant) => (c.source === 'character' ? c.sourceId : c.linkChar ? `${c.linkChar}:${c.linkRow}` : '');
+type PartyHp = { id: string; hp: { current: number; max: number; temp: number }; vitals: Record<string, number>; summons: { id: string; name: string; summonId: string; category: string }[] };
+/** A linked combatant's HP as the server has it (null when its summon left the sheet). */
+function remoteVitals(row: PartyHp, c: Combatant): Vitals | null {
+  if (c.source === 'character') return fromServerHp(row.hp);
+  const k = (f: string) => `summon.${c.linkRow}.${f}`;
+  return row.vitals && k('hp') in row.vitals ? { hp: row.vitals[k('hp')], hpMax: row.vitals[k('hpMax')], tempHp: row.vitals[k('tempHp')] } : null;
+}
 const VITAL_KEYS = ['hp', 'hpMax', 'tempHp'] as const;
 
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
@@ -74,7 +92,7 @@ function blankCombatant(extra: Partial<Combatant> = {}): Combatant {
   return {
     id: newId(), source: 'custom', sourceId: '', name: 'Combatant', kind: 'Enemy',
     initiative: '', initBonus: 0, hp: '', hpMax: '', tempHp: '', ac: '',
-    guard: '', guardMax: '', mana: '', manaMax: '', conditions: '', notes: '', dead: false, snapshot: null,
+    guard: '', guardMax: '', mana: '', manaMax: '', conditions: '', notes: '', dead: false, snapshot: null, followId: '', linkChar: '', linkRow: '',
     ...extra,
   };
 }
@@ -89,6 +107,25 @@ function fromNpc(n: any) {
     source: 'npc', sourceId: n.id, name: n.name, kind: n.kind,
     initBonus: typedInit === '' ? F.abilityMod(n.scores.dex) : typedInit,
     hp, hpMax: hp, ac: leadingNumber(n.ac), guard, guardMax: guard, mana, manaMax: mana, snapshot: n,
+  });
+}
+
+/** Spell summons share their caster's Initiative; familiars and servants roll their own. */
+const SHARES_INITIATIVE = ['Conjured Creature', 'Steed', 'Animated Object'];
+
+/**
+ * Builds a combatant from the Summons & Familiars list, at the spell level it was cast at
+ * and (Dynamic companions) its level - lib/summons.ts works out the numbers.
+ */
+function fromSummon(s: any, levels: { castLevel?: number; level?: number } = {}) {
+  const st = summonStats(s, levels);
+  const hpN = st.hpN;
+  const guard = Number(s.guard) || F.guardMax(st.pb);
+  const typedInit = /[+-]?\d/.test(st.initiative) ? leadingNumber(st.initiative) : '';
+  return blankCombatant({
+    source: 'summon', sourceId: s.id, name: s.name, kind: 'Summon',
+    initBonus: typedInit === '' ? F.abilityMod(st.scores.dex) : typedInit,
+    hp: hpN, hpMax: hpN, ac: st.acN, guard, guardMax: guard, snapshot: { ...s, castLevel: st.castLevel, companionLevel: st.level },
   });
 }
 
@@ -127,10 +164,27 @@ const living = (d: Data) => d.combatants.filter((c) => !c.dead);
 const fallen = (d: Data) => d.combatants.filter((c) => c.dead);
 /** Keeps the list as: everyone alive (in turn order), then the fallen. */
 const tidy = (d: Data) => { d.combatants = [...living(d), ...fallen(d)]; };
-/** Highest initiative first; ties go to the higher bonus. Anyone without a number goes last. */
+/** The combatant a summon shares its Initiative with, if they are still in the fight. */
+const leaderOf = (d: Data, c: Combatant) => (c.followId ? living(d).find((x) => x.id === c.followId && x.id !== c.id) : undefined);
+/** Summons that share someone's Initiative take that number. */
+const syncFollowers = (d: Data) => { living(d).forEach((c) => { const lead = leaderOf(d, c); if (lead) c.initiative = lead.initiative; }); };
+/**
+ * Highest initiative first; ties go to the higher bonus. Anyone without a number goes last.
+ * A summon sharing its caster's Initiative goes immediately after them.
+ */
 function sortByInitiative(d: Data) {
+  syncFollowers(d);
   const value = (c: Combatant) => (c.initiative === '' ? -Infinity : F.num(c.initiative));
-  const order = living(d).sort((a, b) => value(b) - value(a) || F.num(b.initBonus) - F.num(a.initBonus));
+  const leaders = living(d).filter((c) => !leaderOf(d, c));
+  const order = leaders.sort((a, b) => value(b) - value(a) || F.num(b.initBonus) - F.num(a.initBonus));
+  // Put each follower straight after its leader (or after that leader's earlier followers).
+  const followers = living(d).filter((c) => leaderOf(d, c));
+  for (const f of followers) {
+    let i = order.findIndex((x) => x.id === f.followId);
+    if (i < 0) { order.push(f); continue; }
+    while (i + 1 < order.length && order[i + 1].followId === f.followId) i++;
+    order.splice(i + 1, 0, f);
+  }
   d.combatants = [...order, ...fallen(d)];
   d.firstId = order[0]?.id || null;
 }
@@ -174,7 +228,18 @@ function uniqueName(d: Data, name: string) {
 }
 function add(d: Data, c: Combatant) {
   c.name = uniqueName(d, c.name);
-  d.combatants = [...living(d), c, ...fallen(d)];
+  const lead = leaderOf(d, c);
+  if (lead) {
+    // Straight after its summoner (and any summons already following them).
+    c.initiative = lead.initiative;
+    const order = living(d);
+    let i = order.indexOf(lead);
+    while (i + 1 < order.length && order[i + 1].followId === lead.id) i++;
+    order.splice(i + 1, 0, c);
+    d.combatants = [...order, ...fallen(d)];
+  } else {
+    d.combatants = [...living(d), c, ...fallen(d)];
+  }
   if (!d.firstId) d.firstId = living(d)[0].id;
 }
 
@@ -218,12 +283,36 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
   const confirm = useConfirm();
   const arcane = useScope().uses(ARCANE);
   const npcs = useNpcs();
+  const summons = useSummons();
   const party = useApi<{ characters: CharRow[] }>('/group/characters');
   const [name, setName] = useState(enc.name);
   const [data, setData] = useState<Data>(() => ({ round: enc.data.round ?? 1, firstId: enc.data.firstId ?? null, combatants: (enc.data.combatants || []).map((c) => blankCombatant(c)) }));
   const [status, setStatus] = useState<'saved' | 'saving' | string>('saved');
-  const [picking, setPicking] = useState<'npc' | 'pc' | null>(null);
+  const [picking, setPicking] = useState<'npc' | 'pc' | 'summon' | null>(null);
   const [counting, setCounting] = useState<any>(null);
+  const [summoning, setSummoning] = useState<any>(null);
+  // Summons on the party's sheets (their Summons & Familiars panels), loaded when the picker opens.
+  const partyHp = useApi<{ characters: PartyHp[] }>(picking === 'summon' ? '/group/characters/hp' : null);
+  const sheetSummons = (partyHp.data?.characters ?? []).flatMap((ch) => ch.summons.map((row) => ({
+    name: row.name, fromSheet: true, charId: ch.id, rowId: row.id, category: row.category,
+    charName: party.data?.characters.find((p) => p.id === ch.id)?.name ?? 'a character',
+    hp: ch.vitals[`summon.${row.id}.hp`], hpMax: ch.vitals[`summon.${row.id}.hpMax`],
+  }))).filter((e) => !data.combatants.some((c) => c.linkChar === e.charId && c.linkRow === e.rowId));
+  /** Adds a summon from a player's sheet, its HP linked to that sheet. */
+  const addFromSheet = async (e: any) => {
+    try {
+      const sheet = (await api('GET', `/characters/${e.charId}`)).data;
+      const row = (sheet.summons || []).find((x: any) => x.id === e.rowId);
+      if (!row?.snapshot) { toast.error('That summon is no longer on their sheet.'); return; }
+      const c = fromSummon(row.snapshot, { castLevel: row.castLevel, level: row.level });
+      Object.assign(c, { name: row.name || c.name, hp: F.num(row.hp), hpMax: row.hpMax === '' ? '' : F.num(row.hpMax), tempHp: F.num(row.tempHp) || '', linkChar: e.charId, linkRow: e.rowId });
+      const owner = data.combatants.find((x) => x.source === 'character' && x.sourceId === e.charId && !x.dead);
+      if (owner && SHARES_INITIATIVE.includes(row.snapshot.category)) c.followId = owner.id;
+      hpBase.current[linkKey(c)] = vitalsOf(c);
+      mutate((d) => { if (!c.followId) rollFor(c); add(d, c); if (!c.followId) sortByInitiative(d); });
+      toast.success(`${c.name} added from ${e.charName}'s sheet${c.followId ? `, acting right after ${owner!.name}` : ''}. Its HP stays linked to the sheet.`);
+    } catch (err) { toast.error(errorMessage(err)); }
+  };
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
   // ── Saving ──
@@ -258,24 +347,34 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
   // hpBase = the HP last seen on each character's sheet (by character id). A number that
   // differs from it on a card was changed here and is sent to the sheet; a sheet number
   // that differs from it was changed by the player and is shown here.
+  // Keyed by linkKey(): a character, or a summon row on a character's sheet.
   const hpBase = useRef<Record<string, Vitals>>(
-    Object.fromEntries(data.combatants.filter((c) => c.source === 'character').map((c) => [c.sourceId, vitalsOf(c)])),
+    Object.fromEntries(data.combatants.filter(linkKey).map((c) => [linkKey(c), vitalsOf(c)])),
   );
   const pushing = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const pushHp = async () => {
     clearTimeout(pushTimer.current);
     if (pushing.current) { queueHpPush(); return; }
-    const pcs = latest.current.data.combatants.filter((c) => c.source === 'character');
-    const due = pcs.filter((c) => { const b = hpBase.current[c.sourceId]; const v = vitalsOf(c); return !b || VITAL_KEYS.some((k) => v[k] !== b[k]); });
+    const linked = latest.current.data.combatants.filter(linkKey);
+    const due = linked.filter((c) => { const b = hpBase.current[linkKey(c)]; const v = vitalsOf(c); return !b || VITAL_KEYS.some((k) => v[k] !== b[k]); });
     if (!due.length) return;
     pushing.current = true;
     try {
       for (const c of due) {
         const v = vitalsOf(c);
-        const r = await api<{ hp: { current: number; max: number; temp: number } }>('PUT', `/characters/${c.sourceId}/hp`,
-          { current: v.hp, max: v.hpMax, temp: v.tempHp }, { group: groupId });
-        hpBase.current[c.sourceId] = fromServerHp(r.hp);
+        if (c.source === 'character') {
+          const r = await api<{ hp: { current: number; max: number; temp: number } }>('PUT', `/characters/${c.sourceId}/hp`,
+            { current: v.hp, max: v.hpMax, temp: v.tempHp }, { group: groupId });
+          hpBase.current[linkKey(c)] = fromServerHp(r.hp);
+        } else {
+          try {
+            await api('PUT', `/characters/${c.linkChar}/summons/${c.linkRow}/hp`, { hp: v.hp, hpMax: v.hpMax, tempHp: v.tempHp }, { group: groupId });
+          } catch (err) {
+            toast.error(`${c.name}: ${errorMessage(err)} Its HP is now only kept here.`);
+          }
+          hpBase.current[linkKey(c)] = v;
+        }
       }
     } catch (err) {
       toast.error(`Could not update a character's sheet: ${errorMessage(err)}`);
@@ -290,23 +389,23 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
     let alive = true;
     const check = async () => {
       if (document.hidden || pushing.current) return;
-      if (!latest.current.data.combatants.some((c) => c.source === 'character')) return;
+      if (!latest.current.data.combatants.some(linkKey)) return;
       try {
-        const { characters } = await api<{ characters: { id: string; hp: { current: number; max: number; temp: number } }[] }>('GET', '/group/characters/hp', undefined, { group: groupId });
+        const { characters } = await api<{ characters: PartyHp[] }>('GET', '/group/characters/hp', undefined, { group: groupId });
         if (!alive || pushing.current) return;
         const take: Record<string, Partial<Vitals>> = {};
-        for (const c of latest.current.data.combatants.filter((x) => x.source === 'character')) {
-          const row = characters.find((ch) => ch.id === c.sourceId);
-          const base = hpBase.current[c.sourceId];
-          if (!row || !base) continue;
-          const remote = fromServerHp(row.hp);
+        for (const c of latest.current.data.combatants.filter(linkKey)) {
+          const row = characters.find((ch) => ch.id === (c.source === 'character' ? c.sourceId : c.linkChar));
+          const base = hpBase.current[linkKey(c)];
+          const remote = row && remoteVitals(row, c);
+          if (!remote || !base) continue;
           const local = vitalsOf(c);
           const changed = VITAL_KEYS.filter((k) => remote[k] !== base[k]);
           if (!changed.length) continue;
           // Take the sheet's number unless the DM changed it here too (then ours is sent over it).
           const mine = changed.filter((k) => local[k] === base[k]);
           if (mine.length) take[c.id] = Object.fromEntries(mine.map((k) => [k, remote[k]]));
-          hpBase.current[c.sourceId] = { ...base, ...Object.fromEntries(changed.map((k) => [k, remote[k]])) };
+          hpBase.current[linkKey(c)] = { ...base, ...Object.fromEntries(changed.map((k) => [k, remote[k]])) };
         }
         if (Object.keys(take).length) {
           mutate((d) => {
@@ -344,11 +443,12 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => setPicking('npc')}><Plus />Add enemy / NPC</Button>
         <Button onClick={() => setPicking('pc')}><Users />Add player character</Button>
+        <Button onClick={() => setPicking('summon')}><PawPrint />Add summon / familiar</Button>
         <Button variant="outline" onClick={() => mutate((d) => add(d, blankCombatant({ name: 'Combatant' })))}><Plus />Add custom</Button>
         <Button variant="outline" onClick={() => {
           if (!living(data).length) return;
           let first = '';
-          mutate((d) => { living(d).forEach(rollFor); sortByInitiative(d); d.round = 1; startTurn(living(d)[0]); first = living(d)[0].name; });
+          mutate((d) => { living(d).filter((c) => !leaderOf(d, c)).forEach(rollFor); sortByInitiative(d); d.round = 1; startTurn(living(d)[0]); first = living(d)[0].name; });
           toast(`Initiative rolled. ${first} is up first.`);
         }}><Dices />Roll initiative for all</Button>
         <Button variant="outline" onClick={() => mutate(sortByInitiative)}>Sort by initiative</Button>
@@ -400,6 +500,29 @@ function Tracker({ enc, groupId, onEnded }: { enc: Encounter; groupId: string; o
             toast.success(`${ch.name} added. Roll or type their initiative.`);
           } catch (err) { toast.error(errorMessage(err)); }
         }} />
+      <Picker open={picking === 'summon'} onOpenChange={(o) => { if (!o) setPicking(null); }} title="Add a summon or familiar"
+        intro="The ones on your players' sheets come first - their HP stays linked to the sheet. Or pick any from the Summons & Familiars list: you choose the spell level, who summoned it, and whether it shares their Initiative."
+        emptyText='The Summons & Familiars list is empty. Add some on the Summons & Familiars tab, or use "Add custom".'
+        entries={[...sheetSummons, ...(summons.data ?? [])] as any[]}
+        describe={(s: any) => (s.fromSheet
+          ? `On ${s.charName}'s sheet · ${s.category} · HP ${s.hp}${s.hpMax ? ` / ${s.hpMax}` : ''} · linked`
+          : [s.category === 'Companion' ? `Companion (${isDynamic(s) ? 'Dynamic' : 'Static'})` : s.category, s.summonedBy.length && `from ${s.summonedBy.join(', ')}`, s.ac && `AC ${s.ac}`, s.hp && `HP ${s.hp}`].filter(Boolean).join(' · '))}
+        onPick={(s: any) => (s.fromSheet ? void addFromSheet(s) : setSummoning(s))} />
+      {summoning && <AddSummon summon={summoning} combatants={living(data)} onClose={() => setSummoning(null)} onAdd={({ count, castLevel, level, followId, rollNow }) => {
+        const owner = data.combatants.find((c) => c.id === followId);
+        mutate((d) => {
+          for (let i = 0; i < count; i++) {
+            const c = fromSummon(summoning, { castLevel, level });
+            if (owner) c.name = `${summoning.name} (${owner.name})`;
+            c.followId = followId;
+            if (!followId && rollNow) rollFor(c);
+            add(d, c);
+          }
+          if (!followId && rollNow) sortByInitiative(d);
+        });
+        toast.success(`${count} x ${summoning.name} added${owner ? `, acting right after ${owner.name}` : ''}.`);
+        setSummoning(null);
+      }} />}
       {counting && <HowMany npc={counting} onClose={() => setCounting(null)} onAdd={(count, rollNow) => {
         mutate((d) => { for (let i = 0; i < count; i++) { const c = fromNpc(counting); if (rollNow) rollFor(c); add(d, c); } if (rollNow) sortByInitiative(d); });
         toast.success(`${count} x ${counting.name} added.`);
@@ -421,7 +544,7 @@ function CombatantCard({ c, position, isUp, mutate, onDetails }: {
   const [amount, setAmount] = useState('');
   const low = c.hp !== '' && c.hpMax !== '' && F.num(c.hp) <= F.num(c.hpMax) / 2;
   const me = (d: Data) => d.combatants.find((x) => x.id === c.id)!;
-  const kindClass = c.kind === 'Player' || c.kind === 'Ally' ? 'bg-ok/15 text-ok' : c.kind === 'NPC' ? '' : 'border-gold-line bg-gold-soft text-gold-ink';
+  const kindClass = c.kind === 'Player' || c.kind === 'Ally' || c.kind === 'Summon' ? 'bg-ok/15 text-ok' : c.kind === 'NPC' ? '' : 'border-gold-line bg-gold-soft text-gold-ink';
   const hitOrHeal = (heal: boolean) => {
     const n = Math.max(0, F.num(amount));
     if (!n) return;
@@ -509,7 +632,63 @@ function HowMany({ npc, onClose, onAdd }: { npc: any; onClose: () => void; onAdd
   );
 }
 
-/** Tracker numbers you can edit, plus the full stat block (NPC) or sheet summary (player). */
+/** Adding a summon: how many, the spell level it was cast at, and whose Initiative it shares. */
+function AddSummon({ summon, combatants, onClose, onAdd }: {
+  summon: any; combatants: Combatant[]; onClose: () => void;
+  onAdd: (o: { count: number; castLevel: number; level: number; followId: string; rollNow: boolean }) => void;
+}) {
+  const [count, setCount] = useState('1');
+  const [castLevel, setCastLevel] = useState<number>(summon.spellLevel || 0);
+  const [level, setLevel] = useState<number>(1);
+  const dynamic = isDynamic(summon);
+  const owners = combatants.filter((c) => c.source !== 'summon');
+  const [ownerId, setOwnerId] = useState(owners.find((c) => c.source === 'character')?.id ?? '');
+  const [share, setShare] = useState(SHARES_INITIATIVE.includes(summon.category));
+  const [rollNow, setRollNow] = useState(true);
+  const preview = fromSummon(summon, { castLevel, level });
+  const followId = share ? ownerId : '';
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle className="font-serif">Add {summon.name}</DialogTitle>
+          <DialogDescription>{summon.summonedBy.length ? `Summoned by ${summon.summonedBy.join(', ')}.` : 'A summoned creature.'} It joins as an ally.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="How many?" htmlFor="sum-count"><Input id="sum-count" type="number" inputMode="numeric" min={1} max={20} value={count} onChange={(e) => setCount(e.target.value)} /></Field>
+          {summon.spellLevel > 0 && (
+            <Field label="Cast at spell level" htmlFor="sum-level">
+              <NativeSelect id="sum-level" value={String(castLevel)} onChange={(e) => setCastLevel(Number(e.target.value))}>
+                {Array.from({ length: 10 - summon.spellLevel }, (_, i) => summon.spellLevel + i).map((n) => <option key={n} value={n}>Level {n}</option>)}
+              </NativeSelect>
+            </Field>
+          )}
+          {dynamic && (
+            <Field label="Companion level" htmlFor="sum-clevel">
+              <NativeSelect id="sum-clevel" value={String(level)} onChange={(e) => setLevel(Number(e.target.value))}>
+                {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>Level {n}</option>)}
+              </NativeSelect>
+            </Field>
+          )}
+          <Field label="Summoned by" htmlFor="sum-owner" className="sm:col-span-2">
+            <NativeSelect id="sum-owner" value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              <option value="">Nobody in this encounter</option>
+              {owners.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </NativeSelect>
+          </Field>
+        </div>
+        <p className="text-sm text-muted-foreground">Starts with AC {preview.ac === '' ? '-' : preview.ac} and {preview.hp === '' ? 'no HP set' : `${preview.hp} HP`}.</p>
+        <label className="flex items-center gap-2 text-sm"><Checkbox checked={share && !!ownerId} disabled={!ownerId} onCheckedChange={(v) => setShare(v === true)} />Shares their Initiative and takes its turn right after them</label>
+        {!followId && <label className="flex items-center gap-2 text-sm"><Checkbox checked={rollNow} onCheckedChange={(v) => setRollNow(v === true)} />Roll its initiative now (d20 {F.signed(preview.initBonus)})</label>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onAdd({ count: Math.min(20, Math.max(1, Math.round(Number(count)) || 1)), castLevel, level, followId, rollNow })}><Plus />Add</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Tracker numbers you can edit, plus the full stat block (NPC or summon) or sheet summary (player). */
 function CombatantDetails({ c, onClose, set, refresh }: {
   c: Combatant; onClose: () => void; set: (key: keyof Combatant, value: unknown) => void; refresh: (nums: Partial<Combatant>) => void;
 }) {
@@ -542,6 +721,7 @@ function CombatantDetails({ c, onClose, set, refresh }: {
       </div>
       <div className="mt-4">
         {c.source === 'npc' && c.snapshot ? <><h3 className="mb-2 text-xl font-semibold">Stat block</h3><NpcDetail n={c.snapshot} onClose={onClose} /></>
+          : c.source === 'summon' && c.snapshot ? <><h3 className="mb-2 text-xl font-semibold">Stat block</h3><SummonDetail s={c.snapshot} castLevel={c.snapshot.castLevel} level={c.snapshot.companionLevel} fixed onClose={onClose} /></>
           : c.source === 'character'
             ? sheet === null ? <Loading />
               : sheet === 'missing' ? <p className="text-muted-foreground">Their sheet could not be loaded (it may have been deleted).</p>

@@ -6,7 +6,7 @@
  * details (Mana, Chain traits, Catalyst numbers) only show where that ruleset is in use.
  *
  *   <SpellDetail list s /> <ItemDetail it /> <ComponentDetail c /> <SubclassDetail sub cls />
- *   <NpcDetail n /> <CharacterSummary sheet d />        the body of a details dialog
+ *   <NpcDetail n /> <SummonDetail s /> <CharacterSummary sheet d />   the body of a details dialog
  *   <DetailDialog title open onOpenChange footer>       the dialog around them
  *   <Picker ... />                                      a searchable list to choose one entry from
  */
@@ -21,7 +21,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Paragraphs } from '@/components/page';
 import { cn } from '@/lib/utils';
-import { useScope } from '@/lib/catalog';
+import { useScope, useSpells, useSummons } from '@/lib/catalog';
+import { summonStats } from '@/lib/summons';
 import { OriginBadge, OriginLine } from '@/components/rulesets-bar';
 import { ARCANE } from '@shared/rules/rulesets.js';
 
@@ -108,6 +109,7 @@ export function SpellDetail({ list, s }: { list: string; s: any }) {
       </StatGrid>
       <Paragraphs text={s.description} />
       {s.higherLevels && <p className="mt-3"><b>{arcane ? 'Using more Mana.' : 'Using a higher-level spell slot.'}</b> {s.higherLevels}</p>}
+      {isCodified && <SummonsOf spell={s} />}
       <ChipRow label="Classes" list={s.classes.map((c: string) => (c === ANY_CLASS ? 'Any class' : c))} />
       <ChipRow label="Tags" list={s.tags} plain />
       <OriginLine entry={s} />
@@ -275,6 +277,120 @@ export function NpcDetail({ n, onClose }: { n: any; onClose?: () => void }) {
       <Paragraphs text={n.description} />
       {n.notes && <><Callout><b className="text-gold-ink">DM notes:</b></Callout><Paragraphs text={n.notes} /></>}
       <ChipRow label="Tags" list={n.tags} plain />
+    </>
+  );
+}
+
+// ── Summons & familiars ──────────────────────────────────────────────────────
+/** The stat blocks a spell calls up (from the Summons & Familiars list), as links. */
+function SummonsOf({ spell }: { spell: any }) {
+  const { data } = useSummons();
+  const called = (data ?? []).filter((x) => x.summonedBy.some((n: string) => n.toLowerCase() === spell.name.toLowerCase()));
+  if (!called.length) return null;
+  return (
+    <NoteBox title="Stat blocks">
+      <p className="text-sm">This spell calls up {called.map((x, i) => (
+        <span key={x.id}>{i > 0 && (i === called.length - 1 ? ' or ' : ', ')}<Link className="font-semibold underline" to={`/summons?summon=${encodeURIComponent(x.id)}`}>{x.name}</Link></span>
+      ))}. Open {called.length === 1 ? 'it' : 'one'} for the full stat block on the Summons &amp; Familiars page.</p>
+    </NoteBox>
+  );
+}
+
+/** "the spell's level" -> "the spell's level (5)", so a summon's attacks read with real numbers. */
+const atLevel = (text: string, level: number) => (level ? text.replace(/the spell's level/gi, (m) => `${m} (${level})`) : text);
+
+/**
+ * A summon, familiar or companion as a 2024-style stat block. Public.
+ * A spell summon that scales gets a "cast at spell level" picker; a Dynamic companion a
+ * level picker (lib/summons.ts works out the numbers). `fixed` (the sheet and the tracker)
+ * shows the levels it has there instead of the pickers.
+ */
+export function SummonDetail({ s, castLevel, level, fixed, onClose }: { s: any; castLevel?: number; level?: number; fixed?: boolean; onClose?: () => void }) {
+  const usesArcane = useScope().uses(ARCANE);
+  const { data: spells } = useSpells();
+  const [cast, setCast] = useState<number>(castLevel || s.spellLevel || 0);
+  const [lvl, setLvl] = useState<number>(level || 1);
+  const st = summonStats(s, { castLevel: cast, level: lvl });
+  const block = (title: string, entries: any[]) => (entries.length ? <>
+    <SbHead>{title}</SbHead>
+    {entries.map((e, i) => <p key={i} className="mb-1.5"><b><i>{e.name}.</i></b> {atLevel(e.text, st.castLevel)}</p>)}
+  </> : null);
+  const spellLink = (name: string) => {
+    const sp = spells?.codified.find((x: any) => x.name.toLowerCase() === name.toLowerCase());
+    return sp
+      ? <Link key={name} to={`/spells/codified?spell=${encodeURIComponent(sp.id)}`} onClick={onClose}><Badge variant="secondary" className="underline-offset-2 hover:underline">{name}</Badge></Link>
+      : <Badge key={name} variant="outline">{name}</Badge>;
+  };
+  const changes = st.castLevel || st.dynamic;
+  const shown = (orig: string, now: string) => (changes && now !== orig ? <>{now} <span className="text-sm text-muted-foreground">({orig})</span></> : orig);
+  const unlocked = st.features.filter((f) => f.unlocked).map((f) => ({ name: st.dynamic ? `${f.name} (level ${f.level})` : f.name, text: f.text }));
+  const picker = (id: string, label: string, value: number, from: number, to: number, set: (n: number) => void) => (
+    <>
+      <label htmlFor={id} className="font-bold">{label}</label>
+      {fixed ? <b className="font-serif text-base">{value}</b> : (
+        <select id={id} value={value} onChange={(e) => set(Number(e.target.value))} className="h-8 rounded-md border bg-background px-2">
+          {Array.from({ length: to - from + 1 }, (_, i) => from + i).map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      )}
+    </>
+  );
+  return (
+    <>
+      <Kicker>{s.category}{st.dynamic ? ' · Dynamic (gains levels)' : s.category === 'Companion' ? ' · Static' : ''}<OriginBadge entry={s} /><HiddenBadge entry={s} /></Kicker>
+      {s.summonedBy.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5 text-sm"><span className="font-bold">Summoned by</span>{s.summonedBy.map(spellLink)}</div>
+      )}
+      {(s.spellLevel > 0 || st.dynamic) && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-gold-line bg-gold-soft/60 px-3 py-2 text-sm">
+          {s.spellLevel > 0 && picker(`cast-${s.id}`, 'Cast at spell level', st.castLevel, s.spellLevel, 9, setCast)}
+          {st.dynamic && picker(`lvl-${s.id}`, 'Companion level', st.level, 1, 20, setLvl)}
+          <span className="text-muted-foreground">
+            {st.dynamic
+              ? `HP, AC, ability scores, Proficiency Bonus (${signed(st.pb)}) and features below follow its level.`
+              : 'AC, HP and "the spell\'s level" below follow this. Attack bonus and save DC are the caster\'s own.'}
+          </span>
+        </div>
+      )}
+      <StatBlock>
+        <p className="mb-1.5 italic text-muted-foreground">{[s.size, s.creatureType].filter(Boolean).join(' ')}{s.alignment ? `, ${s.alignment}` : ''}</p>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-x-4">
+          <SbLine label="AC" value={s.ac && shown(s.ac, st.ac)} /><SbLine label="Initiative" value={st.initiative} /><SbLine label="HP" value={s.hp && shown(s.hp, st.hp)} /><SbLine label="Speed" value={s.speed} />
+        </div>
+        <Scores cells={ABILITIES.map((a: any) => ({ short: a.short, score: st.scores[a.key], sub: signed(abilityMod(st.scores[a.key])) }))} />
+        <SbLine label="Saving Throws" value={s.saves} /><SbLine label="Skills" value={s.skills} />
+        <SbLine label="Vulnerabilities" value={s.vulnerabilities} /><SbLine label="Resistances" value={s.resistances} /><SbLine label="Immunities" value={s.immunities} />
+        <SbLine label="Gear" value={s.gear} /><SbLine label="Senses" value={s.senses} /><SbLine label="Languages" value={s.languages} />
+        <SbLine label="CR" value={st.dynamic ? `Level ${st.level}; PB ${signed(st.pb)}` : s.cr && `${s.cr}${/PB/i.test(s.cr) ? '' : `; PB ${signed(s.pb)}`}`} />
+        {block('Traits', [...s.traits, ...unlocked])}{block('Actions', s.actions)}{block('Bonus Actions', s.bonusActions)}{block('Reactions', s.reactions)}{block('Legendary Actions', s.legendary)}
+      </StatBlock>
+      {st.dynamic && (
+        <NoteBox title="How it grows">
+          <p className="text-sm">
+            The stat block above is worked out for level {st.level}.
+            {s.hpPerLevel ? ` +${s.hpPerLevel} HP per level.` : ''}
+            {s.acEvery ? ` +1 AC every ${s.acEvery} level${s.acEvery > 1 ? 's' : ''} after 1st.` : ''}
+            {s.abilityEvery && s.growAbilities.length ? ` +1 ${s.growAbilities.map((k: string) => k.toUpperCase()).join(', ')} every ${s.abilityEvery} level${s.abilityEvery > 1 ? 's' : ''} after 1st.` : ''}
+            {' '}Proficiency Bonus follows its level.
+          </p>
+          {st.features.length > 0 && (
+            <ul className="mt-2 space-y-1 text-sm">
+              {st.features.map((f, i) => (
+                <li key={i} className={cn(!f.unlocked && 'text-muted-foreground')}><b>Level {f.level}: {f.name}</b>{f.unlocked ? '' : ' (not yet)'} - {f.text}</li>
+              ))}
+            </ul>
+          )}
+        </NoteBox>
+      )}
+      {usesArcane && (s.guard || s.chainLength || s.momentum) ? (
+        <NoteBox title="Attack Chains & active defense">
+          <StatGrid><Stat label="Guard" value={s.guard || `${guardMax(st.pb)} (2 + PB)`} /><Stat label="Max Chain Length" value={s.chainLength} /></StatGrid>
+          {s.momentum && <p className="text-sm"><b>Momentum Die:</b> {s.momentum}</p>}
+        </NoteBox>
+      ) : null}
+      <SbHead>{s.category === 'Companion' ? 'About this companion' : 'How it is summoned'}</SbHead>
+      <Paragraphs text={s.description} />
+      <ChipRow label="Tags" list={s.tags} plain />
+      <OriginLine entry={s} />
     </>
   );
 }

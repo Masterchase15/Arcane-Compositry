@@ -7,6 +7,7 @@ export declare const CLASS_NAMES: any;
 export declare const setClasses: any;
 export declare const findClass: any;
 export declare const NPC_KINDS: any;
+export declare const SUMMON_CATEGORIES: any;
 export declare const ITEM_CATEGORIES: any;
 export declare const ITEM_RARITIES: any;
 export declare const ANY_CLASS: any;

@@ -68,6 +68,35 @@ test('homebrew: hidden entries only for the DM, and never in other campaigns or 
   assert.equal(has(await player.get('/items', A())), true, 'published: players see it');
 });
 
+test('summons: the SRD list is public; a DM adds custom summons for their campaign only', async () => {
+  const srd = (await server.client().get('/summons')).body.summons;
+  const dragon = srd.find((s) => s.id === 'draconic-spirit');
+  assert.ok(dragon, 'anyone can read the SRD summons');
+  assert.deepEqual(dragon.summonedBy, ['Summon Dragon']);
+  assert.equal(dragon.spellLevel, 5);
+  assert.ok(srd.some((s) => s.category === 'Familiar'));
+
+  const wisp = { name: 'Ember Wisp', category: 'Familiar', summonedBy: 'Find Familiar', hp: '4 (1d6 + 1)', ac: '13', dex: 16, description: 'A homebrew familiar.', actions: 'Flicker | It teleports 10 feet.' };
+  assert.equal((await player.post('/catalog/summons', wisp, A())).status, 403, 'players cannot add one');
+  const saved = await dmA.post('/catalog/summons', wisp, A());
+  assert.equal(saved.status, 200);
+  assert.deepEqual(saved.body.entry.actions, [{ name: 'Flicker', text: 'It teleports 10 feet.' }]);
+  assert.equal(saved.body.entry.scores.dex, 16);
+  const has = (r) => r.body.summons.some((s) => s.name === 'Ember Wisp');
+  assert.equal(has(await player.get('/summons', A())), true, 'players in the campaign see it');
+  assert.equal(has(await dmB.get('/summons', B())), false, 'other campaigns never do');
+  assert.equal(has(await server.client().get('/summons')), false, 'nor the standard list');
+  assert.equal((await dmA.post('/catalog/summons', { ...wisp, name: 'Bad', category: 'Pet rock' }, A())).status, 400, 'unknown categories are refused');
+
+  const pup = { name: 'Loyal Hound', category: 'Companion', growth: 'dynamic', hpPerLevel: 6, acEvery: 4, growAbilities: ['str', 'dex'], abilityEvery: 2, levelFeatures: '5 | Extra Bite | It bites twice.', hp: '11', ac: '13', description: 'A pet.' };
+  const dyn = (await dmA.post('/catalog/summons', pup, A())).body.entry;
+  assert.equal(dyn.growth, 'dynamic');
+  assert.deepEqual([dyn.hpPerLevel, dyn.acEvery, dyn.abilityEvery, dyn.growAbilities], [6, 4, 2, ['str', 'dex']]);
+  assert.deepEqual(dyn.levelFeatures, [{ level: 5, name: 'Extra Bite', text: 'It bites twice.' }]);
+  const notCompanion = (await dmA.post('/catalog/summons', { ...pup, name: 'Odd Familiar', category: 'Familiar' }, A())).body.entry;
+  assert.equal(notCompanion.growth, 'static', 'only Companions can be Dynamic');
+});
+
 test('joining with a code (any case); a wrong code fails', async () => {
   const joiner = await server.signUp('joiner');
   assert.equal((await joiner.post('/groups/join', { code: 'NOTACODE' })).status, 404);

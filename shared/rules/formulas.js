@@ -347,6 +347,26 @@ export function spellSlots(level, casterType = 'full') {
 export const spellSaveDC = (pb, abilityModifier) => 8 + num(pb) + num(abilityModifier);
 export const spellAttackBonus = (pb, abilityModifier) => num(pb) + num(abilityModifier);
 
+/**
+ * A summoned creature's number at a given spell level (Summons & Familiars page, Initiative Tracker).
+ * Understands the SRD's wordings, and gives null when the text does not scale:
+ *   "14 + the spell's level"                 -> 14 + L
+ *   "10 + 1 per spell level"                 -> 10 + 1 x L
+ *   "5 + 10 per spell level"                 -> 5 + 10 x L
+ *   "50 + 10 for each spell level above 5"   -> 50 + 10 x (L - 5)
+ */
+export function scaleBySpellLevel(text, level) {
+  const t = String(text ?? '');
+  const L = num(level);
+  let m = t.match(/(\d+)\s*\+\s*(\d+)\s+for each (?:spell )?level above\s+(\d+)/i);
+  if (m) return Number(m[1]) + Number(m[2]) * Math.max(0, L - Number(m[3]));
+  m = t.match(/(\d+)\s*\+\s*(\d+)\s+(?:per|for each|times the) spell(?:'s)? level/i);
+  if (m) return Number(m[1]) + Number(m[2]) * L;
+  m = t.match(/(\d+)\s*\+\s*the spell(?:'s)? level/i);
+  if (m) return Number(m[1]) + L;
+  return null;
+}
+
 // ═════════════════════════════════ HELPERS ══════════════════════════════════
 
 /** Roll `count` dice with `sides` sides. Returns each die and the total. */

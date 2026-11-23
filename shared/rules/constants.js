@@ -68,6 +68,9 @@ export const findClass = (name) =>
 /** Kinds of creature on the DM's private NPCs & Enemies list. */
 export const NPC_KINDS = ['NPC', 'Ally', 'Enemy', 'Boss'];
 
+/** Categories on the Summons & Familiars page. Add a name here and it appears in the filter and the DM form. */
+export const SUMMON_CATEGORIES = ['Conjured Creature', 'Familiar', 'Special Familiar', 'Steed', 'Undead Servant', 'Animated Object', 'Companion', 'Other'];
+
 /** Categories and rarities for the Items & Weapons page. Add a name here and it appears in every filter. */
 export const ITEM_CATEGORIES = ['Weapon', 'Armor', 'Item', 'Adventuring Gear', 'Tool', 'Consumable', 'Magic Item', 'Catalyst'];
 export const ITEM_RARITIES = ['Mundane', 'Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact'];

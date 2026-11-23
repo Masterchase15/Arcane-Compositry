@@ -45,6 +45,7 @@ export declare const FULL_CASTER_SLOTS: any;
 export declare const spellSlots: any;
 export declare const spellSaveDC: any;
 export declare const spellAttackBonus: any;
+export declare const scaleBySpellLevel: any;
 export declare const roll: any;
 export declare const chanceToMeet: any;
 export declare const signed: any;

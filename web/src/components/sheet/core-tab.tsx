@@ -1,8 +1,9 @@
 /**
  * components/sheet/core-tab.tsx - the sheet's "Core & Combat" tab (page 1 of the
  * printed sheet): identity, vitals, abilities and skills, hit points, Attack
- * Chains, Momentum Dice and weapons. Attack Chains and Momentum Dice are
- * Arcane Compositry: they only show where that ruleset is in use.
+ * Chains, Momentum Dice, summons & familiars (summons-panel.tsx) and weapons.
+ * Attack Chains and Momentum Dice are Arcane Compositry: they only show where
+ * that ruleset is in use.
  */
 import { useState } from 'react';
 import { RefreshCw, Sword } from 'lucide-react';
@@ -22,6 +23,7 @@ import { ARCANE } from '@shared/rules/rulesets.js';
 import { weaponRow } from '@/lib/spellbook';
 import { AreaF, AutoF, AutoInput, CellF, CheckF, ListRow, Pips, SelectF, SmallLabel, Stepper, TextF, getPath, setPath, useSheet } from './fields';
 import { AddRow, DetailsButton, RemoveRow, useDetails } from './rows';
+import { SummonsPanel } from './summons-panel';
 import { cn } from '@/lib/utils';
 
 const grid = 'grid gap-3 sm:grid-cols-2';
@@ -120,6 +122,8 @@ export function CoreTab() {
       </Panel>
 
       </>}
+
+      <SummonsPanel />
 
       <Panel title="Weapons & Attacks" className="lg:col-span-2" bodyClassName="space-y-3">
         {c.weapons.length ? c.weapons.map((w: any, i: number) => (

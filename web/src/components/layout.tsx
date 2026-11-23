@@ -10,7 +10,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, BookOpen, Calculator, Compass, Crown, Flag, House, LogOut, Menu, Moon, ScrollText,
+  ArrowLeft, BookOpen, Calculator, Compass, Crown, Flag, House, LogOut, Menu, Moon, PawPrint, ScrollText,
   Shield, Sparkles, Sun, Sword, UserRound, Users, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ const NAV: NavEntry[] = [
   { to: '/tools', label: 'Calculators', icon: Calculator },
   { to: '/spells', label: 'Spells', icon: ScrollText, tab: true },
   { to: '/items', label: 'Items & Weapons', icon: Sword },
+  { to: '/summons', label: 'Summons & Familiars', icon: PawPrint },
   { to: '/classes', label: 'Classes', icon: Shield },
   { to: '/characters', label: 'Characters', icon: Users, tab: true },
   { to: '/campaigns', label: 'Campaigns', icon: Flag, tab: true },

@@ -131,12 +131,14 @@ export const useClasses = () => useList<any[]>('/classes', (r) => r.classes);
 export const useComponents = () => useList<any[]>('/components', (r) => r.components);
 export const useSubclasses = () => useList<any[]>('/subclasses', (r) => r.subclasses);
 export const useNpcs = () => useList<any[]>('/npcs', (r) => r.npcs);
+export const useSummons = () => useList<any[]>('/summons', (r) => r.summons);
 
 /** Any of the homebrew-editable lists by name (the campaign hub's editors use this). */
 const LIST_SOURCES: Record<string, [string, (r: any) => any[]]> = {
   codified: ['/spells', (r) => r.codified], compositry: ['/spells', (r) => r.compositry],
   components: ['/components', (r) => r.components], items: ['/items', (r) => r.items],
   classes: ['/classes', (r) => r.classes], subclasses: ['/subclasses', (r) => r.subclasses], npcs: ['/npcs', (r) => r.npcs],
+  summons: ['/summons', (r) => r.summons],
 };
 export const useCatalogList = (listName: string) => useList<any[]>(...LIST_SOURCES[listName]);
 

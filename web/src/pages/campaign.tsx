@@ -9,6 +9,7 @@
  * The campaign's DMs also get the DM tools:
  *   Initiative Tracker         run encounters: turn order, HP, Guard
  *   Spells / Items / Classes   add, edit and remove entries without touching code
+ *   Summons & Familiars        stat blocks for what spells call up (public, like Items)
  *   NPCs & Enemies             your private roster of stat blocks - never shown to players
  *   Group                      the invite code, the campaign's name, its rulesets, its members
  *   Session notes / Lore       private notebooks, saved as you type
@@ -32,7 +33,7 @@ import { ARCANE } from '@shared/rules/rulesets.js';
 const TABS: [string, string, 'all' | 'dm' | 'player'][] = [
   ['party', 'Party', 'all'], ['homebrew', 'Rules & homebrew', 'player'],
   ['initiative', 'Initiative Tracker', 'dm'],
-  ['spells', 'Spells', 'dm'], ['items', 'Items & Weapons', 'dm'], ['classes', 'Classes', 'dm'], ['npcs', 'NPCs & Enemies', 'dm'],
+  ['spells', 'Spells', 'dm'], ['items', 'Items & Weapons', 'dm'], ['classes', 'Classes', 'dm'], ['summons', 'Summons & Familiars', 'dm'], ['npcs', 'NPCs & Enemies', 'dm'],
   ['players', 'Group', 'dm'], ['notes', 'Session notes', 'dm'], ['lore', 'Lore', 'dm'],
 ];
 // Some tabs hold more than one list, chosen with the buttons at the top of the tab.
